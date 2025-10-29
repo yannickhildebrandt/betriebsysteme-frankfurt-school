@@ -1,1008 +1,935 @@
 import streamlit as st
+import pandas as pd
 import time
-from datetime import datetime
 
-# Seitenkonfiguration
+# --- Konfiguration der Seite ---
 st.set_page_config(
     page_title="Betriebssystem-Simulator",
     page_icon="💻",
     layout="wide"
 )
 
-# CSS für besseres Styling
+# --- Daten aus der Tabelle (leicht angepasst für bessere Lesbarkeit/Verarbeitung) ---
+os_data = {
+    "DOS": {
+        "Hersteller": "Microsoft",
+        "Einsatzbereich": "Desktop",
+        "Besonderheiten": "Kommandozeilenbasiert, Grundlage für frühe Windows-Versionen",
+        "Unterscheidungsmerkmale": "Einfach, stabil, keine grafische Benutzeroberfläche",
+        "Betriebsarten": "Singletasking",
+        "Single-User/Multi-User": "Single-User",
+        "Erst-erscheinung": "1981",
+        "Dialog/Batch": "Dialog",
+        "Einprozessor/Mehrprozessor": "Einprozessor"
+    },
+    "Windows": {
+        "Hersteller": "Microsoft",
+        "Einsatzbereich": "Desktop, Server",
+        "Besonderheiten": "Weit verbreitet, benutzerfreundlich, viele Anwendungen verfügbar",
+        "Unterscheidungsmerkmale": "Benutzerfreundliche Oberfläche, breite Hardware-Kompatibilität, hohe Verbreitung",
+        "Betriebsarten": "Multitasking, Timesharing",
+        "Single-User/Multi-User": "Single-User, Multi-User",
+        "Erst-erscheinung": "1985",
+        "Dialog/Batch": "Dialog, Batch",
+        "Einprozessor/Mehrprozessor": "Einprozessor, Mehrprozessor"
+    },
+    "macOS": {
+        "Hersteller": "Apple",
+        "Einsatzbereich": "Desktop, Laptop",
+        "Besonderheiten": "Nahtlose Integration mit anderen Apple-Produkten, exklusiv für Apple-Hardware",
+        "Unterscheidungsmerkmale": "Exklusiv für Apple-Hardware, hohe Sicherheit, nahtlose Integration mit Apple-Ökosystem",
+        "Betriebsarten": "Multitasking, Timesharing",
+        "Single-User/Multi-User": "Single-User",
+        "Erst-erscheinung": "2001",
+        "Dialog/Batch": "Dialog",
+        "Einprozessor/Mehrprozessor": "Einprozessor, Mehrprozessor"
+    },
+    "Linux": {
+        "Hersteller": "Versch.",
+        "Einsatzbereich": "Desktop, Server",
+        "Besonderheiten": "Open Source, hohe Anpassbarkeit, viele Distributionen (z.B. Ubuntu, Fedora)",
+        "Unterscheidungsmerkmale": "Open Source, hohe Anpassbarkeit, viele Distributionen, starke Community-Unterstützung",
+        "Betriebsarten": "Multitasking, Timesharing, Echtzeit",
+        "Single-User/Multi-User": "Single-User, Multi-User",
+        "Erst-erscheinung": "1991",
+        "Dialog/Batch": "Dialog, Batch",
+        "Einprozessor/Mehrprozessor": "Einprozessor, Mehrprozessor"
+    },
+    "Android": {
+        "Hersteller": "Google",
+        "Einsatzbereich": "Mobile Geräte",
+        "Besonderheiten": "Weit verbreitet auf Smartphones und Tablets, basiert auf Linux",
+        "Unterscheidungsmerkmale": "Open Source, hohe App-Auswahl, weit verbreitet auf mobilen Geräten",
+        "Betriebsarten": "Multitasking",
+        "Single-User/Multi-User": "Single-User",
+        "Erst-erscheinung": "2008",
+        "Dialog/Batch": "Dialog",
+        "Einprozessor/Mehrprozessor": "Einprozessor"
+    },
+    "iOS": {
+        "Hersteller": "Apple",
+        "Einsatzbereich": "Mobile Geräte",
+        "Besonderheiten": "Exklusiv für iPhones und iPads, nahtlose Integration mit Apple-Ökosystem",
+        "Unterscheidungsmerkmale": "Exklusiv für Apple-Hardware, hohe Sicherheit, nahtlose Integration mit Apple-Ökosystem",
+        "Betriebsarten": "Multitasking",
+        "Single-User/Multi-User": "Single-User",
+        "Erst-erscheinung": "2007",
+        "Dialog/Batch": "Dialog",
+        "Einprozessor/Mehrprozessor": "Einprozessor"
+    },
+    "Unix": {
+        "Hersteller": "Versch.",
+        "Einsatzbereich": "Server, Workstations",
+        "Besonderheiten": "Stabil, sicher, Grundlage für viele andere Betriebssysteme (z.B. macOS, Linux)",
+        "Unterscheidungsmerkmale": "Hohe Stabilität und Sicherheit, Grundlage für viele andere Betriebssysteme, Multiuser-Fähigkeit",
+        "Betriebsarten": "Multitasking, Timesharing",
+        "Single-User/Multi-User": "Multi-User",
+        "Erst-erscheinung": "1969",
+        "Dialog/Batch": "Dialog, Batch",
+        "Einprozessor/Mehrprozessor": "Einprozessor, Mehrprozessor"
+    },
+    "Chrome OS": {
+        "Hersteller": "Google",
+        "Einsatzbereich": "Laptops (Chromebooks)",
+        "Besonderheiten": "Leichtgewichtig, basiert auf Linux, stark auf Cloud-Dienste ausgerichtet",
+        "Unterscheidungsmerkmale": "Leichtgewichtig, stark auf Cloud-Dienste ausgerichtet, schnelle Boot-Zeiten",
+        "Betriebsarten": "Multitasking",
+        "Single-User/Multi-User": "Single-User",
+        "Erst-erscheinung": "2011",
+        "Dialog/Batch": "Dialog",
+        "Einprozessor/Mehrprozessor": "Einprozessor"
+    },
+    "FreeBSD": {
+        "Hersteller": "FreeBSD Project",
+        "Einsatzbereich": "Server, Desktop",
+        "Besonderheiten": "Open Source, bekannt für Stabilität und Sicherheit",
+        "Unterscheidungsmerkmale": "Hohe Stabilität und Sicherheit, Open Source, starke Netzwerkfähigkeiten",
+        "Betriebsarten": "Multitasking, Timesharing",
+        "Single-User/Multi-User": "Multi-User",
+        "Erst-erscheinung": "1993",
+        "Dialog/Batch": "Dialog, Batch",
+        "Einprozessor/Mehrprozessor": "Einprozessor, Mehrprozessor"
+    }
+}
+
+df_os_data = pd.DataFrame.from_dict(os_data, orient='index')
+
+# --- Header ---
+st.title("Betriebssysteme - Interaktiver Simulator 💻")
 st.markdown("""
-<style>
-    .os-window {
-        border: 2px solid #333;
-        border-radius: 10px;
-        padding: 20px;
-        background-color: #f0f0f0;
-        margin: 10px 0;
-    }
-    .terminal {
-        background-color: #000;
-        color: #0f0;
-        padding: 15px;
-        border-radius: 5px;
-        font-family: 'Courier New', monospace;
-        min-height: 200px;
-    }
-    .mac-window {
-        background: linear-gradient(to bottom, #e8e8e8, #d0d0d0);
-        border-radius: 10px;
-        padding: 10px;
-    }
-    .windows-taskbar {
-        background-color: #1e1e1e;
-        color: white;
-        padding: 10px;
-        margin-top: 20px;
-    }
-    .info-box {
-        background-color: #e3f2fd;
-        padding: 15px;
-        border-left: 4px solid #2196f3;
-        margin: 10px 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Initialisierung des Session States
-if 'terminal_history' not in st.session_state:
-    st.session_state.terminal_history = []
-if 'file_system' not in st.session_state:
-    st.session_state.file_system = {
-        'Dokumente': ['brief.txt', 'rechnung.pdf'],
-        'Bilder': ['urlaub.jpg', 'familie.png'],
-        'Programme': ['app.exe', 'tool.app']
-    }
-
-# Haupttitel
-st.title("💻 Interaktiver Betriebssystem-Simulator")
-st.markdown("Erlebe die Unterschiede zwischen verschiedenen Betriebssystemen!")
-
-# Sidebar für OS-Auswahl
-st.sidebar.title("Betriebssystem wählen")
-os_choice = st.sidebar.selectbox(
-    "Wähle ein Betriebssystem:",
-    ["DOS", "Windows", "macOS", "Linux", "Android", "iOS", "Unix", "Chrome OS", "FreeBSD"]
-)
-
-# Informationsbereich in Sidebar
-st.sidebar.markdown("---")
-st.sidebar.info("""
-**Lernziele:**
-- Unterschiede zwischen Betriebssystemen verstehen
-- Bedienkonzepte kennenlernen
-- Einsatzbereiche erkennen
+Erkunden Sie verschiedene Betriebssysteme und bekommen Sie ein Gefühl für deren Kernfunktionen und Charakteristiken.
+Wählen Sie ein Betriebssystem aus der Sidebar, um mehr darüber zu erfahren und eine kleine Simulation zu starten.
 """)
 
-# =====================
-# DOS SIMULATION
-# =====================
-def simulate_dos():
-    st.header("🖥️ DOS (Disk Operating System)")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Kommandozeilenbasiert
-        - Single-User, Single-Tasking
-        - Einprozessor
-        - Erscheinungsjahr: 1981
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown("### Kommandozeile")
-        st.markdown('<div class="terminal">', unsafe_allow_html=True)
-        
-        # DOS-Befehle
-        dos_command = st.text_input("C:\\>", key="dos_input")
-        
-        if dos_command:
-            output = f"C:\\> {dos_command}\n"
-            
-            if dos_command.lower() == "dir":
-                output += """
- Volume in Laufwerk C: hat keine Bezeichnung
- Verzeichnis von C:\\
+# --- Sidebar für die Auswahl ---
+st.sidebar.header("Wählen Sie ein Betriebssystem")
+selected_os_name = st.sidebar.selectbox(
+    "Betriebssystem:",
+    list(os_data.keys()),
+    key="os_selector"
+)
 
-COMMAND  COM     25.307  01.01.1981  12:00
-AUTOEXEC BAT        128  01.01.1981  12:00
-CONFIG   SYS         64  01.01.1981  12:00
-        3 Datei(en)     25.499 Bytes
+selected_os_info = os_data[selected_os_name]
+
+# --- Anzeige der grundlegenden Informationen ---
+st.subheader(f"Informationen zu {selected_os_name}")
+st.write(f"**Hersteller:** {selected_os_info['Hersteller']}")
+st.write(f"**Einsatzbereich:** {selected_os_info['Einsatzbereich']}")
+st.write(f"**Besonderheiten:** {selected_os_info['Besonderheiten']}")
+st.write(f"**Unterscheidungsmerkmale:** {selected_os_info['Unterscheidungsmerkmale']}")
+st.write(f"**Betriebsarten:** {selected_os_info['Betriebsarten']}")
+st.write(f"**Single-User/Multi-User:** {selected_os_info['Single-User/Multi-User']}")
+st.write(f"**Erst-erscheinung:** {selected_os_info['Erst-erscheinung']}")
+st.write(f"**Dialog/Batch:** {selected_os_info['Dialog/Batch']}")
+st.write(f"**Einprozessor/Mehrprozessor:** {selected_os_info['Einprozessor/Mehrprozessor']}")
+
+st.markdown("---")
+
+# --- Interaktive Simulation ---
+st.header(f"Erleben Sie {selected_os_name}")
+
+if selected_os_name == "DOS":
+    st.markdown("""
+    **DOS (Disk Operating System)** war ein kommandozeilenbasiertes System. 
+    Hier interagieren Sie direkt durch Eingabe von Befehlen.
+    """)
+    st.markdown("<div style='background-color:#0000AA; color:white; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
+    st.write("`C:\\>` Bitte geben Sie einen Befehl ein:")
+    command = st.text_input("", key="dos_command_input", help="Probieren Sie 'dir', 'echo Hello World', 'cd ..', 'exit'")
+    
+    if command:
+        command = command.lower().strip()
+        if command == "dir":
+            st.write("`Volume in drive C has no label.`")
+            st.write("`Volume Serial Number is 1234-5678`")
+            st.write("`Directory of C:\\`")
+            st.write("`01/01/1981  12:00 PM        0 COMMAND.COM`")
+            st.write("`01/01/1981  12:00 PM        0 AUTOEXEC.BAT`")
+            st.write("`01/01/1981  12:00 PM        0 CONFIG.SYS`")
+            st.write("`        3 File(s)              0 bytes`")
+            st.write("`        0 Dir(s)         1457664 bytes free`")
+        elif command.startswith("echo "):
+            st.write(command[5:])
+        elif command == "cd ..":
+            st.write("`C:\\>`")
+        elif command == "exit":
+            st.error("`DOS-Sitzung beendet. Bitte starten Sie neu.`")
+        else:
+            st.warning(f"`Bad command or file name: {command}`")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+elif selected_os_name == "Windows":
+    st.markdown("""
+    **Windows** zeichnet sich durch seine grafische Benutzeroberfläche und Multitasking-Fähigkeit aus.
+    Hier können Sie versuchen, mehrere "Anwendungen" gleichzeitig zu öffnen.
+    """)
+
+    st.markdown(
         """
-            elif dos_command.lower() == "help":
-                output += """
-Verfügbare Befehle:
-DIR     - Verzeichnis anzeigen
-COPY    - Dateien kopieren
-DEL     - Dateien löschen
-CLS     - Bildschirm löschen
-DATE    - Datum anzeigen/ändern
-TIME    - Uhrzeit anzeigen/ändern
-                """
-            elif dos_command.lower() == "date":
-                output += f"\nAktuelles Datum: {datetime.now().strftime('%d.%m.%Y')}"
-            elif dos_command.lower() == "cls":
-                output = "Bildschirm gelöscht...\nC:\\>"
-            else:
-                output += f"\nFehler: '{dos_command}' ist kein bekannter Befehl.\nGeben Sie 'HELP' ein für verfügbare Befehle."
-            
-            st.code(output, language=None)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Single-Tasking")
-        st.metric("Benutzer", "Single-User")
-        st.metric("Dialog/Batch", "Dialog")
-        st.metric("Prozessoren", "1")
-        
-        st.markdown("### Typische Anwendung")
-        st.write("Grundlage für frühe Windows-Versionen, einfache Dateiverwaltung")
-
-# =====================
-# WINDOWS SIMULATION
-# =====================
-def simulate_windows():
-    st.header("🪟 Windows")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Benutzerfreundliche Oberfläche
-        - Multi-User, Multitasking, Timesharing
-        - Weit verbreitet
-        - Erscheinungsjahr: 1985
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Simulierter Desktop
-        st.markdown("### Desktop-Oberfläche")
-        
-        tab1, tab2, tab3 = st.tabs(["📁 Datei-Explorer", "⚙️ Einstellungen", "🎮 Programme"])
-        
-        with tab1:
-            st.subheader("Dieser PC")
-            selected_folder = st.selectbox("Ordner:", list(st.session_state.file_system.keys()))
-            
-            st.write(f"**Inhalt von {selected_folder}:**")
-            for file in st.session_state.file_system[selected_folder]:
-                col_a, col_b, col_c = st.columns([3, 1, 1])
-                with col_a:
-                    st.write(f"📄 {file}")
-                with col_b:
-                    if st.button("Öffnen", key=f"open_{file}"):
-                        st.success(f"{file} wird geöffnet...")
-                with col_c:
-                    if st.button("Löschen", key=f"del_{file}"):
-                        st.warning(f"{file} wurde gelöscht!")
-        
-        with tab2:
-            st.subheader("System-Einstellungen")
-            st.slider("Bildschirmhelligkeit", 0, 100, 75)
-            st.selectbox("Design", ["Hell", "Dunkel", "Automatisch"])
-            st.checkbox("Automatische Updates aktivieren", value=True)
-        
-        with tab3:
-            st.subheader("Installierte Programme")
-            programs = ["Microsoft Word", "Excel", "Browser", "E-Mail-Client", "Media Player"]
-            for prog in programs:
-                if st.button(f"▶️ {prog}", key=f"prog_{prog}"):
-                    st.success(f"{prog} wird gestartet...")
-        
-        # Taskleiste
-        st.markdown('<div class="windows-taskbar">🪟 Start | 📁 Dateien | 🌐 Browser | ⚙️ Einstellungen | ' + 
-                   datetime.now().strftime('%H:%M') + '</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Multi-User")
-        st.metric("Dialog/Batch", "Beides")
-        st.metric("Prozessoren", "Mehrere")
-        
-        st.markdown("### Vorteile")
-        st.success("✓ Große Software-Auswahl")
-        st.success("✓ Hardware-Kompatibilität")
-        st.success("✓ Benutzerfreundlich")
-
-# =====================
-# macOS SIMULATION
-# =====================
-def simulate_macos():
-    st.header("🍎 macOS")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Nahtlose Integration mit Apple-Produkten
-        - Exklusiv für Apple-Hardware
-        - Single-User, Multitasking
-        - Erscheinungsjahr: 2001
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # macOS Dock
-        st.markdown('<div class="mac-window">', unsafe_allow_html=True)
-        st.markdown("### 🍎 Mac Desktop")
-        
-        col_a, col_b, col_c = st.columns(3)
-        
-        with col_a:
-            st.markdown("#### 📱 Finder")
-            if st.button("Finder öffnen", key="mac_finder"):
-                st.info("Finder zeigt alle Dateien und Ordner übersichtlich an")
-                for folder, files in st.session_state.file_system.items():
-                    with st.expander(f"📁 {folder}"):
-                        for f in files:
-                            st.write(f"• {f}")
-        
-        with col_b:
-            st.markdown("#### 🚀 Launchpad")
-            if st.button("Apps anzeigen", key="mac_launch"):
-                apps = ["Safari", "Mail", "Fotos", "Musik", "iMovie", "GarageBand", "Pages"]
-                st.write("**Verfügbare Apps:**")
-                for app in apps:
-                    st.write(f"🔵 {app}")
-        
-        with col_c:
-            st.markdown("#### 🔧 Systemeinstellungen")
-            if st.button("Einstellungen", key="mac_settings"):
-                st.write("**macOS Einstellungen:**")
-                st.checkbox("iCloud Synchronisation", value=True)
-                st.checkbox("AirDrop aktiviert", value=True)
-                st.checkbox("Handoff aktiviert", value=True)
-        
-        # Menüleiste
-        st.markdown("---")
-        st.markdown("🍎 Finder | Ablage | Bearbeiten | Darstellung | Gehe zu | Fenster | Hilfe" + 
-                   " " * 50 + "🔋 🔊 " + datetime.now().strftime('%H:%M'))
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Single-User")
-        st.metric("Dialog/Batch", "Dialog")
-        st.metric("Prozessoren", "Mehrere")
-        
-        st.markdown("### Apple-Ökosystem")
-        st.success("✓ iPhone Integration")
-        st.success("✓ iCloud Synchronisation")
-        st.success("✓ AirDrop")
-        st.success("✓ Handoff")
-
-# =====================
-# LINUX SIMULATION
-# =====================
-def simulate_linux():
-    st.header("🐧 Linux")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Open Source, hohe Anpassbarkeit
-        - Viele Distributionen (Ubuntu, Fedora, etc.)
-        - Multi-User, Multitasking, Echtzeit
-        - Erscheinungsjahr: 1991
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Linux Terminal
-        st.markdown("### 💻 Terminal (bash)")
-        st.markdown('<div class="terminal">', unsafe_allow_html=True)
-        
-        linux_cmd = st.text_input("user@linux:~$", key="linux_input")
-        
-        if linux_cmd:
-            output = f"user@linux:~$ {linux_cmd}\n"
-            
-            if linux_cmd.lower().startswith("ls"):
-                output += "Dokumente  Bilder  Downloads  Programme\n"
-                output += "musik.mp3  notizen.txt  script.sh"
-            elif linux_cmd.lower().startswith("pwd"):
-                output += "/home/user"
-            elif linux_cmd.lower().startswith("whoami"):
-                output += "user"
-            elif linux_cmd.lower().startswith("uname"):
-                output += "Linux"
-            elif linux_cmd.lower().startswith("date"):
-                output += datetime.now().strftime('%a %d %b %Y %H:%M:%S')
-            elif linux_cmd.lower() == "help" or linux_cmd.lower() == "--help":
-                output += """
-Häufige Linux-Befehle:
-ls      - Dateien auflisten
-pwd     - aktuelles Verzeichnis
-cd      - Verzeichnis wechseln
-cp      - Dateien kopieren
-mv      - Dateien verschieben
-rm      - Dateien löschen
-mkdir   - Verzeichnis erstellen
-cat     - Dateiinhalt anzeigen
-grep    - Text suchen
-sudo    - als Administrator ausführen
-                """
-            elif linux_cmd.lower().startswith("sudo"):
-                output += "[sudo] Passwort für user:\n"
-                output += "Root-Rechte erforderlich!"
-            else:
-                output += f"bash: {linux_cmd}: Befehl nicht gefunden"
-            
-            st.code(output, language="bash")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Distributionsauswahl
-        st.markdown("### 📦 Beliebte Distributionen")
-        distro = st.selectbox("Wähle eine Distribution:", 
-                             ["Ubuntu", "Fedora", "Debian", "Arch Linux", "Linux Mint"])
-        
-        distro_info = {
-            "Ubuntu": "Benutzerfreundlich, große Community, ideal für Einsteiger",
-            "Fedora": "Cutting-edge, von Red Hat gesponsert",
-            "Debian": "Sehr stabil, Grundlage für Ubuntu",
-            "Arch Linux": "Für Fortgeschrittene, Rolling Release",
-            "Linux Mint": "Besonders einsteigerfreundlich, basiert auf Ubuntu"
+        <style>
+        .windows-desktop {
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Windows_XP_Desktop.png/1280px-Windows_XP_Desktop.png');
+            background-size: cover;
+            background-position: center;
+            height: 400px; /* Adjust height as needed */
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            position: relative;
         }
-        st.info(distro_info[distro])
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking + Echtzeit")
-        st.metric("Benutzer", "Multi-User")
-        st.metric("Dialog/Batch", "Beides")
-        st.metric("Prozessoren", "Mehrere")
-        
-        st.markdown("### Vorteile")
-        st.success("✓ Open Source")
-        st.success("✓ Kostenlos")
-        st.success("✓ Sehr sicher")
-        st.success("✓ Hoch anpassbar")
-        st.success("✓ Starke Community")
+        .windows-icon {
+            text-align: center;
+            margin: 10px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+        .windows-icon img {
+            width: 48px;
+            height: 48px;
+            display: block;
+            margin: auto;
+            border: 1px solid transparent;
+            border-radius: 5px;
+            transition: all 0.2s ease-in-out;
+        }
+        .windows-icon img:hover {
+            border: 1px solid lightblue;
+            background-color: rgba(173, 216, 230, 0.3);
+        }
+        .windows-window {
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #777;
+            box-shadow: 3px 3px 10px rgba(0,0,0,0.3);
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            position: absolute; /* Allows overlaying */
+            min-width: 200px;
+            z-index: 100;
+        }
+        .windows-window-titlebar {
+            background-color: #337ab7;
+            color: white;
+            padding: 5px;
+            border-radius: 3px 3px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: -10px -10px 10px -10px; /* Adjust for padding */
+        }
+        .windows-window-close {
+            background-color: #f00;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            padding: 0 5px;
+            font-weight: bold;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-# =====================
-# ANDROID SIMULATION
-# =====================
-def simulate_android():
-    st.header("📱 Android")
+    st.markdown("<div class='windows-desktop'>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns([2, 1])
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Weit verbreitet auf Smartphones und Tablets
-        - Basiert auf Linux
-        - Open Source, große App-Auswahl
-        - Erscheinungsjahr: 2008
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
+        if st.button("📁 Eigene Dateien", key="win_files", help="Öffnet ein Dateifenster"):
+            st.session_state["win_files_open"] = not st.session_state.get("win_files_open", False)
         
-        # Android Home Screen
-        st.markdown("### 📱 Home Screen")
-        
-        # Status Bar
-        st.markdown("🔋 95% | 📶 4G | 🕐 " + datetime.now().strftime('%H:%M'))
-        
-        # App Grid
-        col_a, col_b, col_c, col_d = st.columns(4)
-        
-        apps = [
-            ("📞", "Telefon"),
-            ("💬", "Nachrichten"),
-            ("📧", "Gmail"),
-            ("🌐", "Chrome"),
-            ("📷", "Kamera"),
-            ("🗺️", "Maps"),
-            ("▶️", "YouTube"),
-            ("🎵", "Musik"),
-            ("📱", "Einstellungen"),
-            ("📸", "Galerie"),
-            ("📅", "Kalender"),
-            ("⏰", "Uhr")
-        ]
-        
-        for i, (icon, name) in enumerate(apps):
-            col = [col_a, col_b, col_c, col_d][i % 4]
-            with col:
-                if st.button(f"{icon}\n{name}", key=f"android_{name}"):
-                    st.toast(f"{name} wird geöffnet...")
-        
-        st.markdown("---")
-        
-        # Quick Settings
-        with st.expander("⚙️ Schnelleinstellungen"):
-            col1a, col2a, col3a, col4a = st.columns(4)
-            with col1a:
-                st.checkbox("📶 WLAN", value=True)
-            with col2a:
-                st.checkbox("📱 Mobile Daten", value=True)
-            with col3a:
-                st.checkbox("🔇 Stumm", value=False)
-            with col4a:
-                st.checkbox("✈️ Flugmodus", value=False)
-        
-        # Google Play Store
-        st.markdown("### 🏪 Google Play Store")
-        st.write("**Empfohlene Apps:**")
-        play_apps = ["WhatsApp", "Instagram", "Spotify", "Netflix", "TikTok"]
-        for app in play_apps:
-            col_x, col_y = st.columns([3, 1])
-            with col_x:
-                st.write(f"📱 {app}")
-            with col_y:
-                if st.button("Installieren", key=f"install_{app}"):
-                    st.success(f"{app} installiert!")
-    
     with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Single-User")
-        st.metric("Dialog/Batch", "Dialog")
-        st.metric("Prozessoren", "1")
-        
-        st.markdown("### Besonderheiten")
-        st.success("✓ Millionen Apps")
-        st.success("✓ Google-Integration")
-        st.success("✓ Anpassbar")
-        st.success("✓ Viele Hersteller")
-
-# =====================
-# iOS SIMULATION
-# =====================
-def simulate_ios():
-    st.header("📱 iOS")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Exklusiv für iPhones und iPads
-        - Nahtlose Integration mit Apple-Ökosystem
-        - Hohe Sicherheit
-        - Erscheinungsjahr: 2007
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # iOS Home Screen
-        st.markdown("### 📱 iPhone Home Screen")
-        
-        # Status Bar
-        st.markdown("🕐 " + datetime.now().strftime('%H:%M') + " | 📶 5G | 🔋 92%")
-        
-        # App Icons
-        col_a, col_b, col_c, col_d = st.columns(4)
-        
-        ios_apps = [
-            ("📱", "Telefon"),
-            ("💬", "Nachrichten"),
-            ("📧", "Mail"),
-            ("🌐", "Safari"),
-            ("📷", "Kamera"),
-            ("📸", "Fotos"),
-            ("🗺️", "Karten"),
-            ("🎵", "Musik"),
-            ("⚙️", "Einstellungen"),
-            ("📺", "TV"),
-            ("📅", "Kalender"),
-            ("⏰", "Uhr")
-        ]
-        
-        for i, (icon, name) in enumerate(ios_apps):
-            col = [col_a, col_b, col_c, col_d][i % 4]
-            with col:
-                if st.button(f"{icon}\n{name}", key=f"ios_{name}"):
-                    st.toast(f"{name} geöffnet", icon=icon)
-        
-        st.markdown("---")
-        
-        # Control Center
-        with st.expander("🎛️ Kontrollzentrum"):
-            col1a, col2a = st.columns(2)
-            with col1a:
-                st.slider("🔆 Helligkeit", 0, 100, 80, key="ios_brightness")
-                st.slider("🔊 Lautstärke", 0, 100, 60, key="ios_volume")
-            with col2a:
-                st.checkbox("📶 WLAN", value=True, key="ios_wifi")
-                st.checkbox("📱 Mobile Daten", value=True, key="ios_data")
-                st.checkbox("🔵 Bluetooth", value=True, key="ios_bt")
-        
-        # App Store
-        st.markdown("### 🏪 App Store")
-        st.write("**Top-Charts:**")
-        ios_store_apps = ["iMessage", "FaceTime", "Pages", "Keynote", "GarageBand"]
-        for app in ios_store_apps:
-            col_x, col_y = st.columns([3, 1])
-            with col_x:
-                st.write(f"📱 {app}")
-            with col_y:
-                if st.button("Laden", key=f"download_{app}"):
-                    with st.spinner("Laden..."):
-                        time.sleep(1)
-                    st.success("Installiert!")
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Single-User")
-        st.metric("Dialog/Batch", "Dialog")
-        st.metric("Prozessoren", "1")
-        
-        st.markdown("### Apple-Ökosystem")
-        st.success("✓ iCloud")
-        st.success("✓ AirDrop")
-        st.success("✓ Handoff")
-        st.success("✓ FaceTime")
-        st.success("✓ iMessage")
-
-# =====================
-# UNIX SIMULATION
-# =====================
-def simulate_unix():
-    st.header("🖥️ Unix")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Stabil, sicher, Grundlage für viele andere Betriebssysteme
-        - Multi-User, Multitasking
-        - Vor allem auf Servern und Workstations
-        - Erscheinungsjahr: 1969
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Unix Terminal
-        st.markdown("### 💻 Unix Shell")
-        st.markdown('<div class="terminal">', unsafe_allow_html=True)
-        
-        unix_cmd = st.text_input("root@unix:/#", key="unix_input")
-        
-        if unix_cmd:
-            output = f"root@unix:/# {unix_cmd}\n"
+        if st.button("🌐 Browser", key="win_browser", help="Öffnet einen Webbrowser"):
+            st.session_state["win_browser_open"] = not st.session_state.get("win_browser_open", False)
             
-            if unix_cmd.lower().startswith("ls"):
-                output += "bin  boot  dev  etc  home  lib  mnt  opt  proc  root  sbin  tmp  usr  var"
-            elif unix_cmd.lower().startswith("ps"):
-                output += """
-PID   TTY      TIME CMD
-1     tty1     0:00 init
-125   tty1     0:01 bash
-342   tty1     0:00 ps
-                """
-            elif unix_cmd.lower().startswith("top"):
-                output += "System-Monitor gestartet...\nCPU: 15% | RAM: 2.1GB/8GB | Prozesse: 143"
-            elif unix_cmd.lower().startswith("who"):
-                output += "root     tty1     " + datetime.now().strftime('%Y-%m-%d %H:%M')
-            elif unix_cmd.lower().startswith("uptime"):
-                output += "System läuft seit 45 Tagen, 12:34"
-            else:
-                output += f"command not found: {unix_cmd}"
+    with col3:
+        if st.button("📝 Editor", key="win_editor", help="Öffnet einen einfachen Texteditor"):
+            st.session_state["win_editor_open"] = not st.session_state.get("win_editor_open", False)
             
-            st.code(output, language="bash")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown("### 🔧 Typische Unix-Eigenschaften")
-        
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.write("**Multiuser-Fähigkeit:**")
-            st.code("""
-$ users
-root admin user1 user2
+    st.markdown("</div>", unsafe_allow_html=True)
 
-$ finger user1
-Login: user1
-Name: John Doe
-Last login: Mon Jan 15 09:23
-            """)
-        
-        with col_b:
-            st.write("**Prozessverwaltung:**")
-            st.code("""
-$ ps aux | grep apache
-apache  1234  0.5  2.1
-apache  1235  0.3  1.8
+    if st.session_state.get("win_files_open"):
+        st.markdown(f"""
+            <div class='windows-window' style='top:100px; left:50px;'>
+                <div class='windows-window-titlebar'>
+                    <span>📁 Eigene Dateien</span>
+                    <button class='windows-window-close' onclick="parent.window.location.href = '/?{time.time()}#win_files_close'">X</button>
+                </div>
+                <p>Inhalt von 'Eigene Dateien':</p>
+                <ul>
+                    <li>Dokument.docx</li>
+                    <li>Bild.jpg</li>
+                    <li>Präsentation.pptx</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+        if "#win_files_close" in st.experimental_get_query_params().get("",[]):
+            st.session_state["win_files_open"] = False
+            st.experimental_set_query_params() # Clear query param
 
-$ kill -9 1234
-Prozess beendet
-            """)
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Multi-User")
-        st.metric("Dialog/Batch", "Beides")
-        st.metric("Prozessoren", "Mehrere")
-        
-        st.markdown("### Einsatzgebiete")
-        st.info("🖥️ Server")
-        st.info("💼 Workstations")
-        st.info("🏢 Enterprise-Systeme")
-        
-        st.markdown("### Ableger")
-        st.write("• Linux")
-        st.write("• macOS")
-        st.write("• BSD-Systeme")
+    if st.session_state.get("win_browser_open"):
+        st.markdown(f"""
+            <div class='windows-window' style='top:150px; left:250px;'>
+                <div class='windows-window-titlebar'>
+                    <span>🌐 Internet Browser</span>
+                     <button class='windows-window-close' onclick="parent.window.location.href = '/?{time.time()}#win_browser_close'">X</button>
+                </div>
+                <p>Willkommen im Streamlit-Browser!</p>
+                <a href='https://streamlit.io' target='_blank'>Besuchen Sie Streamlit.io</a>
+            </div>
+            """, unsafe_allow_html=True)
+        if "#win_browser_close" in st.experimental_get_query_params().get("",[]):
+            st.session_state["win_browser_open"] = False
+            st.experimental_set_query_params() # Clear query param
 
-# =====================
-# CHROME OS SIMULATION
-# =====================
-def simulate_chromeos():
-    st.header("🌐 Chrome OS")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Leichtgewichtig, basiert auf Linux
-        - Stark auf Cloud-Dienste ausgerichtet
-        - Schnelle Boot-Zeiten
-        - Erscheinungsjahr: 2011
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Chrome OS Desktop
-        st.markdown("### 💻 Chrome OS Desktop")
-        
-        # Browser-zentrierte Oberfläche
-        st.markdown("#### 🌐 Google Chrome Browser")
-        
-        tab1, tab2, tab3 = st.tabs(["🏠 Startseite", "☁️ Google Drive", "🛠️ Einstellungen"])
-        
-        with tab1:
-            url = st.text_input("🔍", placeholder="Suchen oder URL eingeben...", key="chrome_url")
-            if url:
-                st.info(f"Navigiere zu: {url}")
-            
-            st.markdown("#### Häufig besucht:")
-            col_a, col_b, col_c, col_d = st.columns(4)
-            websites = ["Gmail", "Google Docs", "YouTube", "Google Drive"]
-            for i, site in enumerate(websites):
-                col = [col_a, col_b, col_c, col_d][i]
-                with col:
-                    if st.button(f"🌐\n{site}", key=f"site_{site}"):
-                        st.success(f"{site} wird geöffnet...")
-        
-        with tab2:
-            st.markdown("#### ☁️ Google Drive")
-            st.info("Alle Dateien werden automatisch in der Cloud gespeichert")
-            
-            cloud_files = {
-                "Dokumente": ["Präsentation.pptx", "Bericht.docx"],
-                "Tabellen": ["Budget.xlsx", "Daten.csv"],
-                "Formulare": ["Umfrage.form"]
-            }
-            
-            for folder, files in cloud_files.items():
-                with st.expander(f"📁 {folder}"):
-                    for f in files:
-                        col_x, col_y = st.columns([3, 1])
-                        with col_x:
-                            st.write(f"📄 {f}")
-                        with col_y:
-                            if st.button("Öffnen", key=f"cloud_{f}"):
-                                st.success("In Google Docs geöffnet!")
-        
-        with tab3:
-            st.markdown("#### ⚙️ Chrome OS Einstellungen")
-            st.checkbox("Google-Konto synchronisieren", value=True)
-            st.checkbox("Offline-Zugriff aktivieren", value=True)
-            st.selectbox("Standard-Suchmaschine", ["Google", "Bing", "DuckDuckGo"])
-            st.slider("Zoom-Stufe", 50, 200, 100, step=25, format="%d%%")
-        
-        st.markdown("---")
-        st.markdown("🌐 Chrome | 📁 Dateien | ⚙️ Einstellungen | " + datetime.now().strftime('%H:%M'))
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Single-User")
-        st.metric("Dialog/Batch", "Dialog")
-        st.metric("Prozessoren", "1")
-        
-        st.markdown("### Vorteile")
-        st.success("✓ Sehr schnell")
-        st.success("✓ Cloud-basiert")
-        st.success("✓ Günstige Hardware")
-        st.success("✓ Automatische Updates")
-        st.success("✓ Sicher")
+    if st.session_state.get("win_editor_open"):
+        st.markdown(f"""
+            <div class='windows-window' style='top:200px; left:450px;'>
+                <div class='windows-window-titlebar'>
+                    <span>📝 Editor</span>
+                     <button class='windows-window-close' onclick="parent.window.location.href = '/?{time.time()}#win_editor_close'">X</button>
+                </div>
+                <textarea style='width:100%; height:100px; border:1px solid #ccc; padding:5px;'>Dies ist ein einfacher Texteditor. Hier können Sie etwas tippen.</textarea>
+            </div>
+            """, unsafe_allow_html=True)
+        if "#win_editor_close" in st.experimental_get_query_params().get("",[]):
+            st.session_state["win_editor_open"] = False
+            st.experimental_set_query_params() # Clear query param
 
-# =====================
-# FreeBSD SIMULATION
-# =====================
-def simulate_freebsd():
-    st.header("😈 FreeBSD")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        **Besonderheiten:**
-        - Open Source, bekannt für Stabilität und Sicherheit
-        - Starke Netzwerkfähigkeiten
-        - Multi-User, Multitasking
-        - Erscheinungsjahr: 1993
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # FreeBSD Terminal
-        st.markdown("### 💻 FreeBSD Shell")
-        st.markdown('<div class="terminal">', unsafe_allow_html=True)
-        
-        bsd_cmd = st.text_input("freebsd%", key="bsd_input")
-        
-        if bsd_cmd:
-            output = f"freebsd% {bsd_cmd}\n"
-            
-            if bsd_cmd.lower().startswith("uname"):
-                output += "FreeBSD 13.2-RELEASE"
-            elif bsd_cmd.lower().startswith("pkg"):
-                output += """
-FreeBSD Package Manager
-Installierte Pakete: 342
-Verfügbare Updates: 12
-Verwenden Sie 'pkg install <name>' zum Installieren
-                """
-            elif bsd_cmd.lower().startswith("sockstat"):
-                output += """
-USER    COMMAND    PID   FD PROTO  LOCAL ADDRESS         FOREIGN ADDRESS
-root    sshd       645   3  tcp4   *:22                  *:*
-www     httpd      892   4  tcp4   *:80                  *:*
-                """
-            elif bsd_cmd.lower().startswith("jls"):
-                output += """
-JID  IP Address      Hostname      Path
-1    192.168.1.10    jail1         /usr/jails/jail1
-2    192.168.1.11    jail2         /usr/jails/jail2
-                """
-                st.info("FreeBSD Jails: Lightweight Virtualisierung für erhöhte Sicherheit")
-            else:
-                output += f"{bsd_cmd}: command not found"
-            
-            st.code(output, language="bash")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown("### 🔒 Sicherheitsfeatures")
-        
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.write("**Jails (Container):**")
-            st.code("""
-# Jail erstellen
-jail -c name=testjail \\
-  path=/jails/test \\
-  host.hostname=test.local \\
-  ip4.addr=192.168.1.100
-            """)
-        
-        with col_b:
-            st.write("**Firewall (pf):**")
-            st.code("""
-# Firewall-Regeln
-block all
-pass in on em0 proto tcp \\
-  from any to any port 22
-pass out all keep state
-            """)
-        
-        st.markdown("### 📦 Ports Collection")
-        st.info("FreeBSD Ports: Über 30.000 Software-Pakete als Quellcode verfügbar")
-    
-    with col2:
-        st.markdown("### Eigenschaften")
-        st.metric("Betriebsart", "Multitasking")
-        st.metric("Benutzer", "Multi-User")
-        st.metric("Dialog/Batch", "Beides")
-        st.metric("Prozessoren", "Mehrere")
-        
-        st.markdown("### Stärken")
-        st.success("✓ Sehr stabil")
-        st.success("✓ Hohe Sicherheit")
-        st.success("✓ Exzellentes Networking")
-        st.success("✓ ZFS Dateisystem")
-        
-        st.markdown("### Einsatz")
-        st.write("• Webserver")
-        st.write("• Storage-Systeme (z.B. Netflix)")
-        st.write("• Firewalls")
 
-# =====================
-# VERGLEICHSTABELLE
-# =====================
-def show_comparison():
-    st.header("📊 Vergleichsübersicht")
-    
+elif selected_os_name == "macOS":
     st.markdown("""
-    Diese Tabelle zeigt die wichtigsten Unterschiede zwischen den Betriebssystemen auf einen Blick:
+    **macOS** (früher OS X) bietet eine elegante, intuitive grafische Oberfläche und ist bekannt für seine nahtlose Integration im Apple-Ökosystem.
+    Hier sehen Sie eine stilisierte Oberfläche mit einem "Dock".
+    """)
+
+    st.markdown(
+        """
+        <style>
+        .mac-desktop {
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c9/Mojave_Desktop.jpg/1280px-Mojave_Desktop.jpg');
+            background-size: cover;
+            background-position: center;
+            height: 400px; /* Adjust height as needed */
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* Dock at bottom */
+            position: relative;
+        }
+        .mac-dock {
+            background-color: rgba(0,0,0,0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 10px 20px;
+            margin: 10px auto;
+            display: flex;
+            gap: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .mac-dock-icon button {
+            background: none;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out;
+        }
+        .mac-dock-icon button:hover {
+            transform: scale(1.1);
+        }
+        .mac-dock-icon img {
+            width: 48px;
+            height: 48px;
+            display: block;
+        }
+        .mac-window {
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #bbb;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            position: absolute;
+            min-width: 250px;
+            z-index: 100;
+        }
+        .mac-window-titlebar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .mac-window-traffic-lights {
+            display: flex;
+            gap: 6px;
+        }
+        .mac-window-traffic-lights div {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .mac-window-traffic-lights .close { background-color: #ff5f56; }
+        .mac-window-traffic-lights .minimize { background-color: #ffbd2e; }
+        .mac-window-traffic-lights .maximize { background-color: #27c93f; }
+        .mac-window-title {
+            flex-grow: 1;
+            text-align: center;
+            font-weight: bold;
+            color: #444;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("<div class='mac-desktop'>", unsafe_allow_html=True)
+    st.markdown("<div class='mac-dock'>", unsafe_allow_html=True)
+    
+    col_icons = st.columns(3)
+    
+    with col_icons[0]:
+        if st.button("✉️ Mail", key="mac_mail", help="Öffnet die Mail App"):
+            st.session_state["mac_mail_open"] = not st.session_state.get("mac_mail_open", False)
+    with col_icons[1]:
+        if st.button("🌐 Safari", key="mac_safari", help="Öffnet den Safari Browser"):
+            st.session_state["mac_safari_open"] = not st.session_state.get("mac_safari_open", False)
+    with col_icons[2]:
+        if st.button("🎵 Music", key="mac_music", help="Öffnet die Musik App"):
+            st.session_state["mac_music_open"] = not st.session_state.get("mac_music_open", False)
+            
+    st.markdown("</div>", unsafe_allow_html=True) # End mac-dock
+    st.markdown("</div>", unsafe_allow_html=True) # End mac-desktop
+
+    # Simplified window closing with query params
+    if st.session_state.get("mac_mail_open"):
+        st.markdown(f"""
+            <div class='mac-window' style='top:80px; left:100px;'>
+                <div class='mac-window-titlebar'>
+                    <div class='mac-window-traffic-lights'>
+                        <div class='close' onclick="parent.window.location.href = '/?{time.time()}#mac_mail_close'"></div>
+                        <div class='minimize'></div>
+                        <div class='maximize'></div>
+                    </div>
+                    <span class='mac-window-title'>✉️ Mail</span>
+                </div>
+                <p>Willkommen in Ihrer Mail App!</p>
+                <p>_Neue E-Mail von Apple Support_</p>
+            </div>
+            """, unsafe_allow_html=True)
+        if "#mac_mail_close" in st.experimental_get_query_params().get("",[]):
+            st.session_state["mac_mail_open"] = False
+            st.experimental_set_query_params()
+
+    if st.session_state.get("mac_safari_open"):
+        st.markdown(f"""
+            <div class='mac-window' style='top:150px; left:300px;'>
+                <div class='mac-window-titlebar'>
+                    <div class='mac-window-traffic-lights'>
+                        <div class='close' onclick="parent.window.location.href = '/?{time.time()}#mac_safari_close'"></div>
+                        <div class='minimize'></div>
+                        <div class='maximize'></div>
+                    </div>
+                    <span class='mac-window-title'>🌐 Safari</span>
+                </div>
+                <p>Surfen Sie mit Safari!</p>
+                <a href='https://www.apple.com' target='_blank'>Besuchen Sie Apple.com</a>
+            </div>
+            """, unsafe_allow_html=True)
+        if "#mac_safari_close" in st.experimental_get_query_params().get("",[]):
+            st.session_state["mac_safari_open"] = False
+            st.experimental_set_query_params()
+
+    if st.session_state.get("mac_music_open"):
+        st.markdown(f"""
+            <div class='mac-window' style='top:220px; left:50px;'>
+                <div class='mac-window-titlebar'>
+                    <div class='mac-window-traffic-lights'>
+                        <div class='close' onclick="parent.window.location.href = '/?{time.time()}#mac_music_close'"></div>
+                        <div class='minimize'></div>
+                        <div class='maximize'></div>
+                    </div>
+                    <span class='mac-window-title'>🎵 Musik</span>
+                </div>
+                <p>Ihre Lieblingssongs hier!</p>
+                <p>_Aktueller Titel: "Feeling Good" (N. Simone)_</p>
+            </div>
+            """, unsafe_allow_html=True)
+        if "#mac_music_close" in st.experimental_get_query_params().get("",[]):
+            st.session_state["mac_music_open"] = False
+            st.experimental_set_query_params()
+
+
+elif selected_os_name == "Linux":
+    st.markdown("""
+    **Linux** ist bekannt für seine Open-Source-Natur, hohe Anpassbarkeit und eine breite Palette an Distributionen und Desktop-Umgebungen.
+    Hier können Sie zwischen verschiedenen 'Desktop-Umgebungen' wählen und einen Terminal-Befehl ausführen.
+    """)
+
+    desktop_env = st.selectbox(
+        "Wählen Sie eine Desktop-Umgebung:",
+        ["GNOME (modern)", "KDE Plasma (anpassbar)", "XFCE (leichtgewichtig)"],
+        key="linux_desktop_env"
+    )
+
+    st.info(f"Sie erleben gerade die {desktop_env}-Umgebung.")
+
+    st.markdown("<div style='background-color:#2e3436; color:#eeeeec; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
+    st.write("`user@linux-pc:~$` Geben Sie einen Befehl ein:")
+    command = st.text_input("", key="linux_command_input", help="Probieren Sie 'ls', 'pwd', 'sudo apt update', 'uname -a'")
+    
+    if command:
+        command = command.lower().strip()
+        if command == "ls":
+            st.write("`Documents  Downloads  Music  Pictures  Videos  Public  Templates`")
+        elif command == "pwd":
+            st.write("`/home/user`")
+        elif command == "sudo apt update":
+            st.write("`[sudo] password for user: *******`")
+            st.write("`Hit:1 http://archive.ubuntu.com/ubuntu focal InRelease`")
+            st.write("`...Package lists updated. Done.`")
+        elif command == "uname -a":
+            st.write("`Linux linux-pc 5.4.0-77-generic #86-Ubuntu SMP Thu Jun 17 00:00:00 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux`")
+        else:
+            st.warning(f"`bash: {command}: command not found`")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+elif selected_os_name == "Android":
+    st.markdown("""
+    **Android** ist das dominierende Betriebssystem für mobile Geräte, bekannt für seine Offenheit und große App-Auswahl.
+    Simulieren Sie hier grundlegende Interaktionen eines Android-Smartphones.
     """)
     
-    comparison_data = {
-        "Betriebssystem": ["DOS", "Windows", "macOS", "Linux", "Android", "iOS", "Unix", "Chrome OS", "FreeBSD"],
-        "Jahr": [1981, 1985, 2001, 1991, 2008, 2007, 1969, 2011, 1993],
-        "Hersteller": ["Microsoft", "Microsoft", "Apple", "Versch.", "Google", "Apple", "Versch.", "Google", "FreeBSD Project"],
-        "Einsatzbereich": ["Desktop", "Desktop/Server", "Desktop", "Desktop/Server", "Mobile", "Mobile", "Server", "Laptops", "Server"],
-        "Single/Multi-User": ["Single", "Multi", "Single", "Multi", "Single", "Single", "Multi", "Single", "Multi"],
-        "Single/Multi-tasking": ["Single", "Multi", "Multi", "Multi", "Multi", "Multi", "Multi", "Multi", "Multi"],
-        "Open Source": ["❌", "❌", "❌", "✅", "✅", "❌", "Teils", "❌", "✅"]
-    }
-    
-    st.dataframe(comparison_data, use_container_width=True)
-    
-    # Interaktiver Vergleich
-    st.markdown("### 🔍 Detailvergleich")
-    
-    col1, col2 = st.columns(2)
+    st.markdown(
+        """
+        <style>
+        .android-phone {
+            width: 300px;
+            height: 550px;
+            border: 12px solid #333;
+            border-radius: 30px;
+            background-color: #f0f0f0;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .android-screen {
+            width: 100%;
+            height: 100%;
+            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSf_b_K1K8w2s-9K8x9F0v5hK3W3f6J6k_2w&s'); /* Placeholder background */
+            background-size: cover;
+            background-position: center;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 5px;
+        }
+        .android-app-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 50px; /* Push apps down */
+        }
+        .android-app-icon {
+            text-align: center;
+            font-size: 12px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+        .android-app-icon button {
+            background-color: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 10px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .android-app-icon button:hover {
+            background-color: rgba(255,255,255,0.4);
+        }
+        .android-notification {
+            background-color: #2196F3;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            margin-top: 10px;
+            width: 80%;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div class='android-phone'>", unsafe_allow_html=True)
+    st.markdown("<div class='android-screen'>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
     
     with col1:
-        os1 = st.selectbox("Betriebssystem 1:", 
-                          ["DOS", "Windows", "macOS", "Linux", "Android", "iOS", "Unix", "Chrome OS", "FreeBSD"],
-                          index=1, key="comp1")
-    
+        if st.button("📞", key="android_phone"):
+            st.session_state["android_notification"] = "Anruf getätigt!"
+        st.markdown("<div class='android-app-icon'>Anruf</div>", unsafe_allow_html=True)
     with col2:
-        os2 = st.selectbox("Betriebssystem 2:", 
-                          ["DOS", "Windows", "macOS", "Linux", "Android", "iOS", "Unix", "Chrome OS", "FreeBSD"],
-                          index=3, key="comp2")
-    
-    if os1 != os2:
-        comparison_details = {
-            "Windows": {"Benutzerfreundlichkeit": 9, "Anpassbarkeit": 6, "Sicherheit": 6, "Performance": 7, "Software-Auswahl": 10},
-            "macOS": {"Benutzerfreundlichkeit": 9, "Anpassbarkeit": 4, "Sicherheit": 9, "Performance": 9, "Software-Auswahl": 7},
-            "Linux": {"Benutzerfreundlichkeit": 6, "Anpassbarkeit": 10, "Sicherheit": 9, "Performance": 9, "Software-Auswahl": 7},
-            "Android": {"Benutzerfreundlichkeit": 8, "Anpassbarkeit": 8, "Sicherheit": 6, "Performance": 7, "Software-Auswahl": 10},
-            "iOS": {"Benutzerfreundlichkeit": 10, "Anpassbarkeit": 3, "Sicherheit": 10, "Performance": 9, "Software-Auswahl": 9},
-            "DOS": {"Benutzerfreundlichkeit": 2, "Anpassbarkeit": 2, "Sicherheit": 3, "Performance": 5, "Software-Auswahl": 2},
-            "Unix": {"Benutzerfreundlichkeit": 5, "Anpassbarkeit": 9, "Sicherheit": 10, "Performance": 10, "Software-Auswahl": 6},
-            "Chrome OS": {"Benutzerfreundlichkeit": 9, "Anpassbarkeit": 4, "Sicherheit": 8, "Performance": 8, "Software-Auswahl": 6},
-            "FreeBSD": {"Benutzerfreundlichkeit": 5, "Anpassbarkeit": 9, "Sicherheit": 10, "Performance": 10, "Software-Auswahl": 7}
-        }
-        
-        st.markdown(f"#### Vergleich: {os1} vs {os2}")
-        
-        for criterion in ["Benutzerfreundlichkeit", "Anpassbarkeit", "Sicherheit", "Performance", "Software-Auswahl"]:
-            col_a, col_b, col_c = st.columns([1, 2, 1])
-            with col_a:
-                st.metric(os1, comparison_details[os1][criterion])
-            with col_b:
-                st.write(f"**{criterion}**")
-            with col_c:
-                st.metric(os2, comparison_details[os2][criterion])
+        if st.button("📸", key="android_camera"):
+            st.session_state["android_notification"] = "Foto aufgenommen!"
+        st.markdown("<div class='android-app-icon'>Kamera</div>", unsafe_allow_html=True)
+    with col3:
+        if st.button("✉️", key="android_message"):
+            st.session_state["android_notification"] = "Nachricht gesendet!"
+        st.markdown("<div class='android-app-icon'>Nachrichten</div>", unsafe_allow_html=True)
 
-# =====================
-# QUIZ
-# =====================
-def show_quiz():
-    st.header("🎯 Wissenstest")
-    
+    if st.session_state.get("android_notification"):
+        st.markdown(f"<div class='android-notification'>{st.session_state['android_notification']}</div>", unsafe_allow_html=True)
+        # Clear notification after a short delay (Streamlit makes this a bit tricky without a callback)
+        # For simplicity, it stays until another action or refresh.
+
+    st.markdown("</div>", unsafe_allow_html=True) # End android-screen
+    st.markdown("</div>", unsafe_allow_html=True) # End android-phone
+
+elif selected_os_name == "iOS":
     st.markdown("""
-    Teste dein Wissen über Betriebssysteme!
+    **iOS** ist Apples Betriebssystem für iPhones und iPads, bekannt für seine Einfachheit, Sicherheit und die tiefe Integration in das Apple-Ökosystem.
+    Erleben Sie hier die typische, minimalistische iOS-Benutzeroberfläche.
+    """)
+
+    st.markdown(
+        """
+        <style>
+        .ios-phone {
+            width: 300px;
+            height: 550px;
+            border: 12px solid #555;
+            border-radius: 30px;
+            background-color: #eee;
+            margin: 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .ios-screen {
+            width: 100%;
+            height: 100%;
+            background-image: url('https://i.stack.imgur.com/b3T6W.png'); /* iOS 14 default background */
+            background-size: cover;
+            background-position: center;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 5px;
+        }
+        .ios-app-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .ios-app-icon {
+            text-align: center;
+            font-size: 10px;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+        .ios-app-icon button {
+            background-color: rgba(255,255,255,0.2); /* Transparent white */
+            border: none;
+            border-radius: 15px; /* Rounded square */
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .ios-app-icon button:active {
+            transform: scale(0.95);
+        }
+        .ios-dock {
+            background-color: rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 8px;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div class='ios-phone'>", unsafe_allow_html=True)
+    st.markdown("<div class='ios-screen'>", unsafe_allow_html=True)
+
+    # App grid
+    app_col1, app_col2, app_col3, app_col4 = st.columns(4)
+    with app_col1:
+        if st.button("📱", key="ios_phone"): st.info("Anruf-App geöffnet.")
+        st.markdown("<div class='ios-app-icon'>Telefon</div>", unsafe_allow_html=True)
+    with app_col2:
+        if st.button("🌐", key="ios_safari"): st.info("Safari geöffnet.")
+        st.markdown("<div class='ios-app-icon'>Safari</div>", unsafe_allow_html=True)
+    with app_col3:
+        if st.button("✉️", key="ios_mail"): st.info("Mail geöffnet.")
+        st.markdown("<div class='ios-app-icon'>Mail</div>", unsafe_allow_html=True)
+    with app_col4:
+        if st.button("📸", key="ios_camera"): st.info("Kamera geöffnet. Lächeln!")
+        st.markdown("<div class='ios-app-icon'>Kamera</div>", unsafe_allow_html=True)
+        
+    # Spacer to push dock to bottom
+    st.markdown("<div style='flex-grow: 1;'></div>", unsafe_allow_html=True)
+
+    # iOS Dock
+    st.markdown("<div class='ios-dock'>", unsafe_allow_html=True)
+    dock_col1, dock_col2, dock_col3, dock_col4 = st.columns(4)
+    with dock_col1:
+        if st.button("💬", key="ios_messages_dock"): st.info("Nachrichten-App geöffnet.")
+    with dock_col2:
+        if st.button("🎵", key="ios_music_dock"): st.info("Musik-App geöffnet.")
+    with dock_col3:
+        if st.button("🗓️", key="ios_calendar_dock"): st.info("Kalender geöffnet.")
+    with dock_col4:
+        if st.button("⚙️", key="ios_settings_dock"): st.info("Einstellungen geöffnet.")
+    st.markdown("</div>", unsafe_allow_html=True) # End ios-dock
+
+    st.markdown("</div>", unsafe_allow_html=True) # End ios-screen
+    st.markdown("</div>", unsafe_allow_html=True) # End ios-phone
+
+elif selected_os_name == "Unix":
+    st.markdown("""
+    **Unix** ist ein stabiles, multiuser-fähiges System, das die Grundlage für viele moderne Betriebssysteme bildet.
+    Fokus liegt auf der Kommandozeile und Systemverwaltung.
+    """)
+    st.markdown("<div style='background-color:#000; color:#00FF00; padding:15px; border-radius:5px;'>", unsafe_allow_html=True)
+    st.write("```bash")
+    st.write("# Willkommen im Unix-System. Typische Server-Interaktionen.")
+    st.write("# Hier sind einige simulierte Befehle:")
+    st.write("# user@server:~# ls -l")
+    st.write("# user@server:~# ping google.com")
+    st.write("```")
+    
+    command = st.text_input("`user@server:~#`", key="unix_command_input", help="Probieren Sie 'ls -l', 'ping google.com', 'whoami'")
+    
+    if command:
+        command = command.lower().strip()
+        if command == "ls -l":
+            st.write("```")
+            st.write("total 16")
+            st.write("drwxr-xr-x 2 user user 4096 Jan  1 00:00 bin")
+            st.write("drwxr-xr-x 2 user user 4096 Jan  1 00:00 etc")
+            st.write("drwxr-xr-x 2 user user 4096 Jan  1 00:00 home")
+            st.write("drwxr-xr-x 2 user user 4096 Jan  1 00:00 var")
+            st.write("```")
+        elif command == "ping google.com":
+            st.write("```")
+            st.write("PING google.com (142.250.186.78) 56(84) bytes of data.")
+            st.write("64 bytes from fra16s31-in-f14.1e100.net (142.250.186.78): icmp_seq=1 ttl=117 time=9.24 ms")
+            st.write("64 bytes from fra16s31-in-f14.1e100.net (142.250.186.78): icmp_seq=2 ttl=117 time=9.18 ms")
+            st.write("--- google.com ping statistics ---")
+            st.write("2 packets transmitted, 2 received, 0% packet loss, time 1001ms")
+            st.write("```")
+        elif command == "whoami":
+            st.write("`user`")
+        else:
+            st.warning(f"`bash: {command}: command not found`")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+elif selected_os_name == "Chrome OS":
+    st.markdown("""
+    **Chrome OS** ist ein leichtgewichtiges, Cloud-basiertes Betriebssystem von Google. Es ist stark auf Webanwendungen und schnelle Bootzeiten ausgerichtet.
+    Hier erleben Sie eine Oberfläche, die primär auf den Browser setzt.
     """)
     
-    if 'quiz_score' not in st.session_state:
-        st.session_state.quiz_score = 0
-    if 'quiz_started' not in st.session_state:
-        st.session_state.quiz_started = False
+    st.markdown(
+        """
+        <style>
+        .chromeos-desktop {
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/e/e0/Chrome_OS_desktop_after_OOBE.png'); /* Placeholder Chrome OS background */
+            background-size: cover;
+            background-position: center;
+            height: 400px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        .chromeos-browser-window {
+            background-color: white;
+            border: 1px solid #aaa;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            width: 90%;
+            height: 80%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chromeos-browser-toolbar {
+            background-color: #f1f3f4;
+            padding: 8px 10px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #dadce0;
+        }
+        .chromeos-address-bar {
+            background-color: white;
+            border: 1px solid #dadce0;
+            border-radius: 20px;
+            padding: 5px 10px;
+            flex-grow: 1;
+            margin: 0 10px;
+            color: #3c4043;
+            font-size: 14px;
+        }
+        .chromeos-content {
+            flex-grow: 1;
+            padding: 15px;
+            text-align: center;
+            color: #3c4043;
+            overflow-y: auto;
+        }
+        .chromeos-shelf {
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            padding: 5px 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+        }
+        .chromeos-shelf button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div class='chromeos-desktop'>", unsafe_allow_html=True)
+    st.markdown("<div class='chromeos-browser-window'>", unsafe_allow_html=True)
+    st.markdown("""
+        <div class='chromeos-browser-toolbar'>
+            <button>←</button>
+            <button>→</button>
+            <span class='chromeos-address-bar'>https://www.google.com</span>
+            <button>⋮</button>
+        </div>
+        <div class='chromeos-content'>
+            <h3>Willkommen bei Google Chrome!</h3>
+            <p>Ihr gesamtes digitales Leben in der Cloud.</p>
+            <p>Suchen Sie etwas?</p>
+            <input type='text' placeholder='Google durchsuchen oder Adresse eingeben' style='width:80%; padding:8px; border:1px solid #ccc; border-radius:20px;' disabled>
+            <div style='margin-top:20px;'>
+                <button style='background-color:#4285F4; color:white; border:none; padding:10px 15px; border-radius:5px; cursor:pointer;'>Google Suche</button>
+                <button style='background-color:#f8f9fa; color:#3c4043; border:1px solid #dadce0; padding:10px 15px; border-radius:5px; cursor:pointer;'>Auf gut Glück</button>
+            </div>
+            <p style='margin-top:20px;'>_Simuliert einen schnellen Bootvorgang_</p>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True) # End chromeos-browser-window
+
+    st.markdown("<div class='chromeos-shelf'>", unsafe_allow_html=True)
+    shelf_col1, shelf_col2, shelf_col3 = st.columns(3)
+    with shelf_col1: st.button("🌐", key="chromeos_browser_shelf")
+    with shelf_col2: st.button("📧", key="chromeos_gmail_shelf")
+    with shelf_col3: st.button("📁", key="chromeos_files_shelf")
+    st.markdown("</div>", unsafe_allow_html=True) # End chromeos-shelf
+    st.markdown("</div>", unsafe_allow_html=True) # End chromeos-desktop
+
+    st.warning("Hinweis: Da Cloud-Dienste nicht direkt simuliert werden können, zeigt dies eine browserzentrierte Oberfläche.")
+
+
+elif selected_os_name == "FreeBSD":
+    st.markdown("""
+    **FreeBSD** ist ein leistungsstarkes, stabiles und sicheres Open-Source-Unix-System, oft in Servern und für spezialisierte Anwendungen eingesetzt.
+    Fokus liegt auf Systemstabilität, Sicherheit und Netzwerkfähigkeiten.
+    """)
+    st.markdown("<div style='background-color:#222222; color:#bada55; padding:15px; border-radius:5px;'>", unsafe_allow_html=True)
+    st.write("```bash")
+    st.write("# Willkommen bei FreeBSD. Ein System für Stabilität und Sicherheit.")
+    st.write("# Hier sind einige simulierte Befehle:")
+    st.write("# root@freebsd:~# dmesg | grep -i cpu")
+    st.write("# root@freebsd:~# top -o cpu")
+    st.write("```")
     
-    if not st.session_state.quiz_started:
-        if st.button("Quiz starten", type="primary"):
-            st.session_state.quiz_started = True
-            st.session_state.quiz_score = 0
-            st.rerun()
-    else:
-        questions = [
-            {
-                "question": "Welches Betriebssystem ist Open Source?",
-                "options": ["Windows", "macOS", "Linux", "iOS"],
-                "correct": "Linux"
-            },
-            {
-                "question": "Welches Betriebssystem verwendet Jails für Sicherheit?",
-                "options": ["Linux", "Windows", "FreeBSD", "Android"],
-                "correct": "FreeBSD"
-            },
-            {
-                "question": "Welches war das erste Betriebssystem in der Liste?",
-                "options": ["DOS", "Unix", "Windows", "Linux"],
-                "correct": "Unix"
-            },
-            {
-                "question": "Welches Betriebssystem ist stark Cloud-orientiert?",
-                "options": ["DOS", "Chrome OS", "FreeBSD", "Unix"],
-                "correct": "Chrome OS"
-            },
-            {
-                "question": "Welches Betriebssystem unterstützt Single-Tasking?",
-                "options": ["DOS", "Windows", "Linux", "macOS"],
-                "correct": "DOS"
-            }
-        ]
-        
-        for i, q in enumerate(questions):
-            st.markdown(f"**Frage {i+1}:** {q['question']}")
-            answer = st.radio("", q['options'], key=f"q{i}", label_visibility="collapsed")
-            
-            if st.button(f"Prüfen", key=f"check{i}"):
-                if answer == q['correct']:
-                    st.success("✅ Richtig!")
-                    st.session_state.quiz_score += 1
-                else:
-                    st.error(f"❌ Falsch! Die richtige Antwort ist: {q['correct']}")
-            
-            st.markdown("---")
-        
-        if st.button("Quiz beenden"):
-            st.balloons()
-            st.success(f"🎉 Du hast {st.session_state.quiz_score} von {len(questions)} Punkten erreicht!")
-            st.session_state.quiz_started = False
+    command = st.text_input("`root@freebsd:~#`", key="freebsd_command_input", help="Probieren Sie 'pkg info', 'ifconfig', 'sysctl kern.ipc.somaxconn'")
+    
+    if command:
+        command = command.lower().strip()
+        if command == "pkg info":
+            st.write("```")
+            st.write("apache24-2.4.52               Apache HTTP server")
+            st.write("nginx-1.20.1_2,2              Robust and small-footprint HTTP(S) server")
+            st.write("php80-8.0.15                  PHP Scripting Language")
+            st.write("```")
+        elif command == "ifconfig":
+            st.write("```")
+            st.write("em0: flags=8843<UP,BROADCAST,RUNNING,SIMPLEX,MULTICAST> metric 0 mtu 1500")
+            st.write("        options=209b<RXCSUM,TXCSUM,VLAN_MTU,VLAN_HWTAGGING,VLAN_HWCSUM,WOL_MAGIC>")
+            st.write("        inet 192.168.1.10 netmask 0xffffff00 broadcast 192.168.1.255 ")
+            st.write("        ether 00:0c:29:1c:2c:1a")
+            st.write("lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> metric 0 mtu 16384")
+            st.write("        options=600003<RXCSUM,TXCSUM,RXCSUM_IPV6,TXCSUM_IPV6>")
+            st.write("        inet 127.0.0.1 netmask 0xff000000 ")
+            st.write("```")
+        elif command == "sysctl kern.ipc.somaxconn":
+            st.write("`kern.ipc.somaxconn: 128`")
+        else:
+            st.warning(f"`{command}: Command not found.`")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# =====================
-# HAUPTNAVIGATION
-# =====================
 
-# Hauptbereich basierend auf Auswahl
-if os_choice == "DOS":
-    simulate_dos()
-elif os_choice == "Windows":
-    simulate_windows()
-elif os_choice == "macOS":
-    simulate_macos()
-elif os_choice == "Linux":
-    simulate_linux()
-elif os_choice == "Android":
-    simulate_android()
-elif os_choice == "iOS":
-    simulate_ios()
-elif os_choice == "Unix":
-    simulate_unix()
-elif os_choice == "Chrome OS":
-    simulate_chromeos()
-elif os_choice == "FreeBSD":
-    simulate_freebsd()
+# --- Fußzeile (optional) ---
+st.sidebar.markdown("---")
+st.sidebar.info("Diese App ist ein Lernwerkzeug und simuliert die Betriebssysteme auf einer grundlegenden Ebene.")
 
-# Zusätzliche Funktionen am Ende
 st.markdown("---")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("📊 Vergleichstabelle anzeigen", use_container_width=True):
-        show_comparison()
-
-with col2:
-    if st.button("🎯 Wissenstest starten", use_container_width=True):
-        show_quiz()
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666; padding: 20px;'>
-    <p>💻 Interaktiver Betriebssystem-Simulator | Erstellt für Lernzwecke</p>
-    <p><small>Hinweis: Dies ist eine Simulation zu Lernzwecken. Die dargestellten Funktionen sind vereinfacht.</small></p>
-</div>
-""", unsafe_allow_html=True)
+st.markdown("Alle Informationen basieren auf der bereitgestellten Übersichtstabelle.")
