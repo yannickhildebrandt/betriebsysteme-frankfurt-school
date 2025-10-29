@@ -1,409 +1,172 @@
 import streamlit as st
-import pandas as pd
-import time
 from datetime import datetime
 import random
 
-# --- Konfiguration der Seite ---
+# --- Konfiguration ---
 st.set_page_config(
     page_title="Betriebssystem-Simulator Pro",
     page_icon="💻",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# --- Session State Initialisierung ---
-if 'terminal_history' not in st.session_state:
-    st.session_state.terminal_history = []
-if 'current_directory' not in st.session_state:
-    st.session_state.current_directory = "C:\\"
+# --- Session State ---
+if 'dos_history' not in st.session_state:
+    st.session_state.dos_history = ["Microsoft(R) MS-DOS(R) Version 6.22", "(C)Copyright Microsoft Corp 1981-1994.", "", "C:\\>"]
+if 'linux_history' not in st.session_state:
+    st.session_state.linux_history = ["Welcome to Ubuntu 22.04.3 LTS", "", "user@ubuntu:~$"]
+if 'win_explorer_open' not in st.session_state:
+    st.session_state.win_explorer_open = False
+if 'win_edge_open' not in st.session_state:
+    st.session_state.win_edge_open = False
+if 'mac_finder_open' not in st.session_state:
+    st.session_state.mac_finder_open = False
+if 'mac_safari_open' not in st.session_state:
+    st.session_state.mac_safari_open = False
 if 'battery_level' not in st.session_state:
     st.session_state.battery_level = random.randint(60, 100)
 
-# --- CSS Styles ---
+# --- CSS ---
 st.markdown("""
 <style>
-    .main {
-        padding: 0;
-    }
-    
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+    .stApp {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
     /* DOS Terminal */
-    .dos-screen {
+    .dos-terminal {
         background-color: #0000AA;
         color: #FFFFFF;
         font-family: 'Courier New', monospace;
         padding: 20px;
         border-radius: 8px;
-        min-height: 500px;
-        max-height: 600px;
+        min-height: 400px;
+        font-size: 14px;
+        line-height: 1.4;
+        white-space: pre-wrap;
         overflow-y: auto;
-        font-size: 16px;
-        line-height: 1.3;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    }
-    
-    .dos-line {
-        margin: 3px 0;
-    }
-    
-    .dos-cursor {
-        display: inline-block;
-        width: 10px;
-        height: 16px;
-        background-color: #FFFFFF;
-        animation: blink 1s infinite;
-        margin-left: 5px;
-    }
-    
-    @keyframes blink {
-        0%, 49% { opacity: 1; }
-        50%, 100% { opacity: 0; }
-    }
-    
-    /* Windows Desktop */
-    .windows-screen {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 600px;
-        border-radius: 10px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        padding: 30px;
-        padding-bottom: 80px;
-    }
-    
-    .windows-icon {
-        display: inline-block;
-        width: 80px;
-        text-align: center;
-        margin: 10px;
-        vertical-align: top;
-    }
-    
-    .windows-icon-emoji {
-        font-size: 48px;
-        background: rgba(255,255,255,0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 8px;
-    }
-    
-    .windows-icon-label {
-        font-size: 12px;
-        color: white;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-    }
-    
-    .windows-window {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        overflow: hidden;
-        margin: 20px 0;
-    }
-    
-    .windows-titlebar {
-        background: #f3f3f3;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 10px;
-        border-bottom: 1px solid #e0e0e0;
-    }
-    
-    .windows-window-content {
-        padding: 20px;
-    }
-    
-    .windows-taskbar {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 48px;
-        background: rgba(0, 0, 0, 0.6);
-        backdrop-filter: blur(20px);
-        display: flex;
-        align-items: center;
-        padding: 0 15px;
-        border-top: 1px solid rgba(255,255,255,0.1);
-    }
-    
-    /* macOS Desktop */
-    .macos-screen {
-        background: linear-gradient(180deg, #4A90E2 0%, #7B68EE 100%);
-        min-height: 650px;
-        border-radius: 10px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    
-    .macos-menubar {
-        height: 28px;
-        background: rgba(0,0,0,0.3);
-        backdrop-filter: blur(20px);
-        display: flex;
-        align-items: center;
-        padding: 0 15px;
-        font-size: 13px;
-        color: white;
-        gap: 15px;
-    }
-    
-    .macos-desktop-content {
-        padding: 30px;
-        min-height: 560px;
-    }
-    
-    .macos-window {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 12px 48px rgba(0,0,0,0.3);
-        overflow: hidden;
-        margin: 20px 0;
-    }
-    
-    .macos-titlebar {
-        background: #f6f6f6;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        padding: 0 15px;
-        border-bottom: 1px solid #e0e0e0;
-        gap: 10px;
-    }
-    
-    .macos-traffic-lights {
-        display: flex;
-        gap: 8px;
-    }
-    
-    .macos-traffic-light {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-    }
-    
-    .macos-dock {
-        position: absolute;
-        bottom: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(255,255,255,0.2);
-        backdrop-filter: blur(40px);
-        border-radius: 16px;
-        padding: 8px;
-        display: flex;
-        gap: 8px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-    }
-    
-    .macos-dock-icon {
-        width: 52px;
-        height: 52px;
-        background: rgba(255,255,255,0.4);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
+        max-height: 500px;
     }
     
     /* Linux Terminal */
-    .linux-screen {
+    .linux-terminal {
         background-color: #300A24;
         color: #FFFFFF;
-        font-family: 'Ubuntu Mono', 'Courier New', monospace;
+        font-family: 'Ubuntu Mono', monospace;
         padding: 20px;
         border-radius: 8px;
-        min-height: 500px;
-        max-height: 600px;
-        overflow-y: auto;
+        min-height: 400px;
         font-size: 14px;
         line-height: 1.5;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        white-space: pre-wrap;
+        overflow-y: auto;
+        max-height: 500px;
     }
     
     .linux-prompt {
         color: #8AE234;
-        font-weight: bold;
     }
     
-    /* Mobile Screens */
-    .phone-container {
-        max-width: 375px;
-        margin: 20px auto;
-        background: #1a1a1a;
-        border-radius: 40px;
-        padding: 12px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    }
-    
-    .phone-screen {
-        width: 100%;
-        height: 700px;
-        border-radius: 32px;
-        overflow: hidden;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .android-screen {
-        background: linear-gradient(180deg, #1a73e8 0%, #4285f4 100%);
-    }
-    
-    .ios-screen {
-        background: linear-gradient(180deg, #000428 0%, #004e92 100%);
-    }
-    
-    .phone-statusbar {
-        height: 28px;
-        background: rgba(0,0,0,0.3);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 15px;
-        font-size: 11px;
-        color: white;
-    }
-    
-    .phone-content {
-        flex-grow: 1;
+    /* Card Styles */
+    .os-card {
+        background: white;
         padding: 20px;
-        overflow-y: auto;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        margin: 10px 0;
     }
     
-    .app-grid {
+    .icon-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-        margin-top: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
     }
     
-    .app-icon {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    
-    .app-icon-circle {
-        width: 60px;
-        height: 60px;
-        background: rgba(255,255,255,0.2);
-        backdrop-filter: blur(10px);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 28px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    
-    .app-label {
-        font-size: 11px;
-        color: white;
+    .icon-item {
         text-align: center;
+        padding: 10px;
+        border-radius: 8px;
+        transition: background 0.2s;
     }
     
-    .command-input-area {
-        margin-top: 20px;
-        padding: 15px;
+    .icon-item:hover {
         background: rgba(0,0,0,0.05);
-        border-radius: 8px;
+    }
+    
+    .icon-emoji {
+        font-size: 40px;
+        margin-bottom: 5px;
+    }
+    
+    .icon-label {
+        font-size: 11px;
+        color: #333;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- OS Daten ---
 os_data = {
-    "DOS": {"icon": "💾", "color": "#0000AA", "name": "MS-DOS"},
-    "Windows": {"icon": "🪟", "color": "#0078D4", "name": "Windows"},
-    "macOS": {"icon": "", "color": "#000000", "name": "macOS"},
-    "Linux": {"icon": "🐧", "color": "#FCC624", "name": "Linux"},
-    "Android": {"icon": "🤖", "color": "#3DDC84", "name": "Android"},
-    "iOS": {"icon": "", "color": "#007AFF", "name": "iOS"}
+    "DOS": {"icon": "💾", "color": "#0000AA"},
+    "Windows": {"icon": "🪟", "color": "#0078D4"},
+    "macOS": {"icon": "", "color": "#000000"},
+    "Linux": {"icon": "🐧", "color": "#FCC624"},
+    "Android": {"icon": "🤖", "color": "#3DDC84"},
+    "iOS": {"icon": "", "color": "#007AFF"}
 }
-
-def get_current_time():
-    return datetime.now().strftime("%H:%M")
-
-def get_current_date():
-    return datetime.now().strftime("%a, %d. %B")
 
 # --- Header ---
 st.markdown("""
-<div style='text-align: center; padding: 20px 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-     border-radius: 10px; margin-bottom: 30px; color: white;'>
-    <h1 style='margin: 0; font-size: 2.5em;'>💻 Betriebssystem-Simulator Pro</h1>
-    <p style='margin: 10px 0 0 0; opacity: 0.9;'>Erleben Sie die Evolution der Betriebssysteme</p>
+<div style='text-align: center; padding: 30px 0; color: white;'>
+    <h1 style='font-size: 3em; margin: 0;'>💻 Betriebssystem-Simulator Pro</h1>
+    <p style='font-size: 1.2em; opacity: 0.9; margin-top: 10px;'>Erleben Sie die Evolution der Betriebssysteme</p>
 </div>
 """, unsafe_allow_html=True)
 
 # --- Sidebar ---
 with st.sidebar:
-    st.markdown("### 🎮 Betriebssystem wählen")
-    
-    selected_os_name = st.selectbox(
+    st.title("🎮 Steuerung")
+    selected_os = st.selectbox(
         "Betriebssystem:",
         list(os_data.keys()),
-        format_func=lambda x: f"{os_data[x]['icon']} {x}",
-        key="os_selector"
+        format_func=lambda x: f"{os_data[x]['icon']} {x}"
     )
     
     st.markdown("---")
-    show_hints = st.checkbox("💡 Hilfestellungen anzeigen", value=True)
-    realistic_delays = st.checkbox("⏱️ Realistische Verzögerungen", value=False)
+    show_hints = st.checkbox("💡 Hilfestellungen", value=True)
+    
+    st.markdown("---")
+    st.info("💡 Nutzen Sie die interaktiven Elemente, um die Betriebssysteme zu erkunden!")
 
 # --- Hauptbereich ---
-selected_os_info = os_data[selected_os_name]
 
-st.markdown(f"""
-<div style='background: linear-gradient(135deg, {selected_os_info['color']}22, {selected_os_info['color']}44); 
-     padding: 20px; border-radius: 10px; border-left: 4px solid {selected_os_info['color']}; margin-bottom: 20px;'>
-    <h2 style='margin: 0; color: {selected_os_info['color']};'>{selected_os_info['icon']} {selected_os_name}</h2>
-</div>
-""", unsafe_allow_html=True)
-
-# === DOS Simulation ===
-if selected_os_name == "DOS":
+# ==================== DOS ====================
+if selected_os == "DOS":
+    st.markdown(f"## 💾 MS-DOS Simulation")
+    
     if show_hints:
-        st.info("🕹️ **DOS** - Probieren Sie: `dir`, `cd`, `cls`, `ver`, `help`, `date`, `time`")
+        st.info("📝 Verfügbare Befehle: `dir`, `cls`, `ver`, `help`, `date`, `time`")
     
-    if 'dos_history' not in st.session_state:
-        st.session_state.dos_history = [
-            "Microsoft(R) MS-DOS(R) Version 6.22",
-            "             (C)Copyright Microsoft Corp 1981-1994.",
-            "",
-            "C:\\&gt;"
-        ]
+    # Terminal Display
+    terminal_text = "\n".join(st.session_state.dos_history)
+    st.markdown(f'<div class="dos-terminal">{terminal_text}\n█</div>', unsafe_allow_html=True)
     
-    dos_html = '<div class="dos-screen">'
-    for line in st.session_state.dos_history:
-        dos_html += f'<div class="dos-line">{line}</div>'
-    dos_html += '<div class="dos-line"><span class="dos-cursor"></span></div>'
-    dos_html += '</div>'
-    
-    st.markdown(dos_html, unsafe_allow_html=True)
-    
+    # Command Input
+    st.markdown("### Befehlseingabe")
     col1, col2 = st.columns([5, 1])
-    with col1:
-        dos_command = st.text_input("DOS Befehl:", key="dos_cmd", placeholder="z.B. dir", label_visibility="collapsed")
-    with col2:
-        execute_button = st.button("⏎", key="dos_exec", use_container_width=True)
     
-    if execute_button and dos_command:
-        cmd = dos_command.lower().strip()
-        st.session_state.dos_history.append(f"C:\\&gt;{dos_command}")
+    with col1:
+        dos_cmd = st.text_input("DOS Befehl:", key="dos_input", placeholder="Befehl eingeben...")
+    
+    with col2:
+        st.write("")
+        st.write("")
+        execute = st.button("▶️ Enter", key="dos_exec", use_container_width=True)
+    
+    if execute and dos_cmd:
+        st.session_state.dos_history.append(f"C:\\>{dos_cmd}")
+        
+        cmd = dos_cmd.lower().strip()
         
         if cmd == "dir":
             st.session_state.dos_history.extend([
@@ -412,425 +175,376 @@ if selected_os_name == "DOS":
                 "",
                 " Verzeichnis von C:\\",
                 "",
-                "DOS          &lt;DIR&gt;     01.01.1994   9:00",
-                "WINDOWS      &lt;DIR&gt;     01.01.1994   9:30",
+                "DOS          <DIR>     01.01.1994   9:00",
+                "WINDOWS      <DIR>     01.01.1994   9:30",
                 "COMMAND  COM    54,645 01.01.1994  10:00",
                 "               3 Datei(en)     55,029 Bytes",
                 ""
             ])
         elif cmd == "cls":
-            st.session_state.dos_history = ["C:\\&gt;"]
+            st.session_state.dos_history = ["C:\\>"]
         elif cmd == "ver":
             st.session_state.dos_history.extend(["", "MS-DOS Version 6.22", ""])
         elif cmd == "help":
             st.session_state.dos_history.extend([
                 "", "Verfügbare Befehle:",
-                "  DIR  - Verzeichnis anzeigen",
-                "  CLS  - Bildschirm löschen",
-                "  VER  - Version anzeigen", ""
+                "  DIR   - Verzeichnis anzeigen",
+                "  CLS   - Bildschirm löschen",
+                "  VER   - Version anzeigen",
+                "  DATE  - Datum anzeigen",
+                "  TIME  - Zeit anzeigen",
+                "  HELP  - Diese Hilfe", ""
             ])
         elif cmd == "date":
             st.session_state.dos_history.extend([f"Aktuelles Datum: {datetime.now().strftime('%d.%m.%Y')}", ""])
         elif cmd == "time":
             st.session_state.dos_history.extend([f"Aktuelle Zeit: {datetime.now().strftime('%H:%M:%S')}", ""])
         else:
-            st.session_state.dos_history.extend([f"Ungültiger Befehl: {dos_command}", ""])
+            st.session_state.dos_history.extend([f"Ungültiger Befehl oder Dateiname: {dos_cmd}", ""])
         
-        st.session_state.dos_history.append("C:\\&gt;")
+        st.session_state.dos_history.append("C:\\>")
         st.rerun()
 
-# === Windows Simulation ===
-elif selected_os_name == "Windows":
+# ==================== WINDOWS ====================
+elif selected_os == "Windows":
+    st.markdown("## 🪟 Windows 11 Simulation")
+    
     if show_hints:
-        st.info("🖱️ **Windows** - Klicken Sie auf die Buttons, um Fenster zu öffnen!")
+        st.info("🖱️ Klicken Sie auf die Buttons, um Fenster zu öffnen und zu schließen!")
     
-    if 'win_explorer_open' not in st.session_state:
-        st.session_state.win_explorer_open = False
-    if 'win_edge_open' not in st.session_state:
-        st.session_state.win_edge_open = False
-    
-    windows_html = '<div class="windows-screen">'
-    
-    # Desktop Icons
-    windows_html += '''
-    <div>
-        <div class="windows-icon">
-            <div class="windows-icon-emoji">📁</div>
-            <div class="windows-icon-label">Dieser PC</div>
-        </div>
-        <div class="windows-icon">
-            <div class="windows-icon-emoji">🗑️</div>
-            <div class="windows-icon-label">Papierkorb</div>
-        </div>
-        <div class="windows-icon">
-            <div class="windows-icon-emoji">📄</div>
-            <div class="windows-icon-label">Dokumente</div>
-        </div>
-    </div>
-    '''
-    
-    if st.session_state.win_explorer_open:
-        windows_html += '''
-        <div class="windows-window">
-            <div class="windows-titlebar">
-                <div><span>📁</span> Datei-Explorer</div>
-                <div>─ □ ✕</div>
-            </div>
-            <div class="windows-window-content">
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center;">
-                    <div><div style="font-size: 48px;">📄</div>Dokumente</div>
-                    <div><div style="font-size: 48px;">🖼️</div>Bilder</div>
-                    <div><div style="font-size: 48px;">🎵</div>Musik</div>
-                    <div><div style="font-size: 48px;">🎬</div>Videos</div>
-                </div>
-            </div>
-        </div>
-        '''
-    
-    if st.session_state.win_edge_open:
-        windows_html += '''
-        <div class="windows-window">
-            <div class="windows-titlebar">
-                <div><span>🌐</span> Microsoft Edge</div>
-                <div>─ □ ✕</div>
-            </div>
-            <div class="windows-window-content" style="text-align: center; padding: 40px;">
-                <h2 style="color: #0078D4;">Willkommen bei Microsoft Edge</h2>
-                <p>Der schnelle und sichere Browser für Windows</p>
-            </div>
-        </div>
-        '''
-    
-    windows_html += f'''
-    <div class="windows-taskbar">
-        <div style="font-size: 24px;">🪟</div>
-        <div style="flex-grow: 1; display: flex; gap: 10px; margin-left: 15px;">
-            <div style="padding: 8px 12px; background: rgba(255,255,255,0.1); border-radius: 4px;">📁</div>
-            <div style="padding: 8px 12px; background: rgba(255,255,255,0.1); border-radius: 4px;">🌐</div>
-        </div>
-        <div style="display: flex; gap: 15px; color: white; font-size: 13px;">
-            <span>🔊</span>
-            <span>📶</span>
-            <span>{get_current_time()}</span>
-        </div>
-    </div>
-    '''
-    
-    windows_html += '</div>'
-    st.markdown(windows_html, unsafe_allow_html=True)
+    # Desktop
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    st.markdown("### 🖥️ Desktop")
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("📁 Explorer", key="win_exp", use_container_width=True):
-            st.session_state.win_explorer_open = True
-            st.rerun()
+        st.markdown('<div class="icon-item"><div class="icon-emoji">📁</div><div class="icon-label">Dieser PC</div></div>', unsafe_allow_html=True)
     with col2:
-        if st.button("🌐 Edge", key="win_edge", use_container_width=True):
-            st.session_state.win_edge_open = True
-            st.rerun()
+        st.markdown('<div class="icon-item"><div class="icon-emoji">🗑️</div><div class="icon-label">Papierkorb</div></div>', unsafe_allow_html=True)
     with col3:
-        if st.button("⚙️ Einstellungen", key="win_set", use_container_width=True):
-            st.toast("⚙️ Einstellungen")
+        st.markdown('<div class="icon-item"><div class="icon-emoji">📄</div><div class="icon-label">Dokumente</div></div>', unsafe_allow_html=True)
     with col4:
-        if st.button("🔄 Reset", key="win_reset", use_container_width=True):
+        st.markdown('<div class="icon-item"><div class="icon-emoji">🖼️</div><div class="icon-label">Bilder</div></div>', unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Windows
+    if st.session_state.win_explorer_open:
+        st.markdown('<div class="os-card">', unsafe_allow_html=True)
+        st.markdown("### 📁 Datei-Explorer")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown("**📄 Dokumente**")
+            st.caption("15 Dateien")
+        with col2:
+            st.markdown("**🖼️ Bilder**")
+            st.caption("127 Dateien")
+        with col3:
+            st.markdown("**🎵 Musik**")
+            st.caption("42 Dateien")
+        with col4:
+            st.markdown("**🎬 Videos**")
+            st.caption("8 Dateien")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    if st.session_state.win_edge_open:
+        st.markdown('<div class="os-card">', unsafe_allow_html=True)
+        st.markdown("### 🌐 Microsoft Edge")
+        st.markdown("#### Willkommen bei Microsoft Edge")
+        st.write("Der schnelle und sichere Browser für Windows")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("⚡ Geschwindigkeit", "Sehr schnell")
+        with col2:
+            st.metric("🔒 Sicherheit", "Sehr hoch")
+        with col3:
+            st.metric("🌐 Kompatibilität", "100%")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Taskbar
+    st.markdown("---")
+    st.markdown("### ⬇️ Taskleiste")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        if st.button("📁 Datei-Explorer", key="win_explorer", use_container_width=True):
+            st.session_state.win_explorer_open = not st.session_state.win_explorer_open
+            st.rerun()
+    
+    with col2:
+        if st.button("🌐 Edge Browser", key="win_edge", use_container_width=True):
+            st.session_state.win_edge_open = not st.session_state.win_edge_open
+            st.rerun()
+    
+    with col3:
+        if st.button("⚙️ Einstellungen", key="win_settings", use_container_width=True):
+            st.toast("⚙️ Einstellungen geöffnet")
+    
+    with col4:
+        if st.button("🔄 Alle schließen", key="win_reset", use_container_width=True):
             st.session_state.win_explorer_open = False
             st.session_state.win_edge_open = False
             st.rerun()
 
-# === macOS Simulation ===
-elif selected_os_name == "macOS":
+# ==================== macOS ====================
+elif selected_os == "macOS":
+    st.markdown("##  macOS Ventura Simulation")
+    
     if show_hints:
-        st.info("🍎 **macOS** - Nutzen Sie die Buttons, um Apps zu öffnen!")
+        st.info("🍎 Nutzen Sie das Dock am unteren Rand, um Apps zu starten!")
     
-    if 'mac_finder_open' not in st.session_state:
-        st.session_state.mac_finder_open = False
-    if 'mac_safari_open' not in st.session_state:
-        st.session_state.mac_safari_open = False
+    # Menu Bar
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col1:
+        st.markdown("** Finder**")
+    with col2:
+        st.markdown("**Ablage · Bearbeiten · Darstellung · Gehe zu · Fenster**")
+    with col3:
+        st.markdown(f"**🔋 📶 {datetime.now().strftime('%H:%M')}**")
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    macos_html = '<div class="macos-screen">'
+    # Desktop
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    st.markdown("### 🖥️ Schreibtisch")
+    st.write(" ")
+    st.write(" ")
+    st.write(" ")
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    macos_html += f'''
-    <div class="macos-menubar">
-        <div style="font-weight: 600;"></div>
-        <div>Finder</div>
-        <div>Ablage</div>
-        <div>Darstellung</div>
-        <div style="flex-grow: 1;"></div>
-        <div>{get_current_time()}</div>
-    </div>
-    '''
-    
-    macos_html += '<div class="macos-desktop-content">'
-    
+    # Windows
     if st.session_state.mac_finder_open:
-        macos_html += '''
-        <div class="macos-window">
-            <div class="macos-titlebar">
-                <div class="macos-traffic-lights">
-                    <div class="macos-traffic-light" style="background: #ff605c;"></div>
-                    <div class="macos-traffic-light" style="background: #ffbd44;"></div>
-                    <div class="macos-traffic-light" style="background: #00ca4e;"></div>
-                </div>
-                <div style="flex-grow: 1; text-align: center; font-weight: 600;">Finder</div>
-            </div>
-            <div style="padding: 30px; text-align: center;">
-                <h3>📁 Finder</h3>
-                <div style="display: flex; justify-content: center; gap: 30px; margin-top: 20px;">
-                    <div><div style="font-size: 48px;">📄</div>Dokumente</div>
-                    <div><div style="font-size: 48px;">🖼️</div>Bilder</div>
-                    <div><div style="font-size: 48px;">💾</div>Downloads</div>
-                </div>
-            </div>
-        </div>
-        '''
+        st.markdown('<div class="os-card">', unsafe_allow_html=True)
+        st.markdown("### 📁 Finder")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("**📄 Dokumente**")
+            st.caption("Zuletzt verwendet")
+        with col2:
+            st.markdown("**🖼️ Bilder**")
+            st.caption("Fotos Mediathek")
+        with col3:
+            st.markdown("**💾 Downloads**")
+            st.caption("Neueste Dateien")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     if st.session_state.mac_safari_open:
-        macos_html += '''
-        <div class="macos-window">
-            <div class="macos-titlebar">
-                <div class="macos-traffic-lights">
-                    <div class="macos-traffic-light" style="background: #ff605c;"></div>
-                    <div class="macos-traffic-light" style="background: #ffbd44;"></div>
-                    <div class="macos-traffic-light" style="background: #00ca4e;"></div>
-                </div>
-                <div style="flex-grow: 1; text-align: center; font-weight: 600;">Safari</div>
-            </div>
-            <div style="padding: 40px; text-align: center;">
-                <div style="font-size: 48px;"></div>
-                <h3>Safari</h3>
-                <p>Der schnellste Browser für Mac</p>
-            </div>
-        </div>
-        '''
+        st.markdown('<div class="os-card">', unsafe_allow_html=True)
+        st.markdown("### 🌐 Safari")
+        st.markdown("#### Der schnellste Browser der Welt")
+        st.write("Entwickelt von Apple für Mac, iPhone und iPad.")
+        st.markdown('</div>', unsafe_allow_html=True)
     
-    macos_html += '</div>'
+    # Dock
+    st.markdown("---")
+    st.markdown("### 📱 Dock")
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     
-    macos_html += '''
-    <div class="macos-dock">
-        <div class="macos-dock-icon">📁</div>
-        <div class="macos-dock-icon">🌐</div>
-        <div class="macos-dock-icon">✉️</div>
-        <div class="macos-dock-icon">🎵</div>
-        <div class="macos-dock-icon">⚙️</div>
-    </div>
-    '''
-    
-    macos_html += '</div>'
-    st.markdown(macos_html, unsafe_allow_html=True)
-    
-    col1, col2, col3, col4 = st.columns(4)
     with col1:
-        if st.button("📁 Finder", key="mac_find", use_container_width=True):
-            st.session_state.mac_finder_open = True
+        if st.button("📁", key="mac_finder", use_container_width=True):
+            st.session_state.mac_finder_open = not st.session_state.mac_finder_open
             st.rerun()
+        st.caption("Finder")
+    
     with col2:
-        if st.button("🌐 Safari", key="mac_saf", use_container_width=True):
-            st.session_state.mac_safari_open = True
+        if st.button("🌐", key="mac_safari", use_container_width=True):
+            st.session_state.mac_safari_open = not st.session_state.mac_safari_open
             st.rerun()
+        st.caption("Safari")
+    
     with col3:
-        if st.button("✉️ Mail", key="mac_mail", use_container_width=True):
-            st.toast("📧 Mail")
+        if st.button("✉️", key="mac_mail", use_container_width=True):
+            st.toast("📧 Mail geöffnet")
+        st.caption("Mail")
+    
     with col4:
-        if st.button("🔄 Reset", key="mac_reset", use_container_width=True):
+        if st.button("🎵", key="mac_music", use_container_width=True):
+            st.toast("🎵 Musik geöffnet")
+        st.caption("Musik")
+    
+    with col5:
+        if st.button("⚙️", key="mac_settings", use_container_width=True):
+            st.toast("⚙️ Systemeinstellungen")
+        st.caption("Einstellungen")
+    
+    with col6:
+        if st.button("🔄", key="mac_reset", use_container_width=True):
             st.session_state.mac_finder_open = False
             st.session_state.mac_safari_open = False
             st.rerun()
+        st.caption("Zurücksetzen")
 
-# === Linux Simulation ===
-elif selected_os_name == "Linux":
+# ==================== LINUX ====================
+elif selected_os == "Linux":
+    st.markdown("## 🐧 Linux (Ubuntu) Simulation")
+    
     if show_hints:
-        st.info("🐧 **Linux** - Probieren Sie: `ls`, `pwd`, `whoami`, `uname -a`, `clear`")
+        st.info("⌨️ Verfügbare Befehle: `ls`, `pwd`, `whoami`, `uname -a`, `df -h`, `clear`, `neofetch`")
     
-    if 'linux_history' not in st.session_state:
-        st.session_state.linux_history = [
-            "Welcome to Ubuntu 22.04.3 LTS",
-            "",
-            f"Last login: {datetime.now().strftime('%a %b %d %H:%M:%S %Y')}",
-            "",
-            "user@ubuntu:~$"
-        ]
+    # Terminal Display
+    terminal_text = "\n".join(st.session_state.linux_history)
+    st.markdown(f'<div class="linux-terminal"><span class="linux-prompt">{terminal_text}</span>\n█</div>', unsafe_allow_html=True)
     
-    linux_html = '<div class="linux-screen">'
-    for line in st.session_state.linux_history:
-        if "user@ubuntu" in line:
-            linux_html += f'<div><span class="linux-prompt">user@ubuntu:</span>~$</div>'
-        else:
-            linux_html += f'<div>{line}</div>'
-    linux_html += '</div>'
-    
-    st.markdown(linux_html, unsafe_allow_html=True)
-    
+    # Command Input
+    st.markdown("### Befehlseingabe")
     col1, col2 = st.columns([5, 1])
+    
     with col1:
-        linux_cmd = st.text_input("Linux Befehl:", key="linux_cmd", placeholder="z.B. ls", label_visibility="collapsed")
+        linux_cmd = st.text_input("Linux Befehl:", key="linux_input", placeholder="Befehl eingeben...")
+    
     with col2:
-        if st.button("⏎", key="linux_exec", use_container_width=True):
-            if linux_cmd:
-                st.session_state.linux_history.append(f"user@ubuntu:~$ {linux_cmd}")
-                
-                if linux_cmd == "ls":
-                    st.session_state.linux_history.extend(["Desktop  Documents  Downloads  Music  Pictures", ""])
-                elif linux_cmd == "pwd":
-                    st.session_state.linux_history.extend(["/home/user", ""])
-                elif linux_cmd == "whoami":
-                    st.session_state.linux_history.extend(["user", ""])
-                elif linux_cmd == "uname -a":
-                    st.session_state.linux_history.extend(["Linux ubuntu 5.15.0-91-generic x86_64 GNU/Linux", ""])
-                elif linux_cmd == "clear":
-                    st.session_state.linux_history = []
-                else:
-                    st.session_state.linux_history.extend([f"bash: {linux_cmd}: command not found", ""])
-                
-                st.session_state.linux_history.append("user@ubuntu:~$")
-                st.rerun()
+        st.write("")
+        st.write("")
+        execute = st.button("▶️ Enter", key="linux_exec", use_container_width=True)
+    
+    if execute and linux_cmd:
+        st.session_state.linux_history.append(f"user@ubuntu:~$ {linux_cmd}")
+        
+        cmd = linux_cmd.strip()
+        
+        if cmd == "ls":
+            st.session_state.linux_history.extend(["Desktop  Documents  Downloads  Music  Pictures  Videos", ""])
+        elif cmd == "pwd":
+            st.session_state.linux_history.extend(["/home/user", ""])
+        elif cmd == "whoami":
+            st.session_state.linux_history.extend(["user", ""])
+        elif cmd == "uname -a":
+            st.session_state.linux_history.extend(["Linux ubuntu 5.15.0-91-generic #101-Ubuntu SMP x86_64 GNU/Linux", ""])
+        elif cmd == "df -h":
+            st.session_state.linux_history.extend([
+                "Filesystem      Size  Used Avail Use% Mounted on",
+                "/dev/sda1       100G   45G   50G  48% /",
+                "/dev/sda2       200G   78G  112G  42% /home", ""
+            ])
+        elif cmd == "clear":
+            st.session_state.linux_history = []
+        elif cmd == "neofetch":
+            st.session_state.linux_history.extend([
+                "OS: Ubuntu 22.04.3 LTS x86_64",
+                "Kernel: 5.15.0-91-generic",
+                "Shell: bash 5.1.16",
+                "CPU: Intel i7 (8) @ 3.600GHz",
+                "Memory: 4512MiB / 15976MiB", ""
+            ])
+        else:
+            st.session_state.linux_history.extend([f"bash: {cmd}: command not found", ""])
+        
+        st.session_state.linux_history.append("user@ubuntu:~$")
+        st.rerun()
 
-# === Android Simulation ===
-elif selected_os_name == "Android":
+# ==================== ANDROID ====================
+elif selected_os == "Android":
+    st.markdown("## 🤖 Android 14 Simulation")
+    
     if show_hints:
-        st.info("📱 **Android** - Nutzen Sie die Buttons für App-Interaktionen!")
+        st.info("📱 Tippen Sie auf die App-Buttons, um Aktionen auszuführen!")
     
-    android_html = f'''
-    <div class="phone-container">
-        <div class="phone-screen android-screen">
-            <div class="phone-statusbar">
-                <span>{get_current_time()}</span>
-                <div style="display: flex; gap: 8px;">
-                    <span>📶</span>
-                    <span>🔋 {st.session_state.battery_level}%</span>
-                </div>
-            </div>
-            
-            <div class="phone-content">
-                <div style="color: white; margin-bottom: 40px;">
-                    <div style="font-size: 64px; font-weight: 300;">{get_current_time()}</div>
-                    <div style="font-size: 18px; opacity: 0.9;">{get_current_date()}</div>
-                </div>
-                
-                <div class="app-grid">
-                    <div class="app-icon">
-                        <div class="app-icon-circle">📞</div>
-                        <div class="app-label">Telefon</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">💬</div>
-                        <div class="app-label">Nachrichten</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">🌐</div>
-                        <div class="app-label">Chrome</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">📧</div>
-                        <div class="app-label">Gmail</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">📷</div>
-                        <div class="app-label">Kamera</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">🗺️</div>
-                        <div class="app-label">Maps</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">▶️</div>
-                        <div class="app-label">YouTube</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle">⚙️</div>
-                        <div class="app-label">Settings</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    '''
-    
-    st.markdown(android_html, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns(3)
+    # Status Bar
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("📞 Anruf", key="and_call", use_container_width=True):
-            st.toast("📞 Anruf wird getätigt...")
+        st.markdown(f"**{datetime.now().strftime('%H:%M')}**")
     with col2:
-        if st.button("📸 Foto", key="and_photo", use_container_width=True):
-            st.success("✓ Foto gespeichert")
-    with col3:
-        if st.button("💬 Nachricht", key="and_msg", use_container_width=True):
-            st.success("✓ Nachricht gesendet")
+        st.markdown(f"**📶 🔋 {st.session_state.battery_level}%**")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Home Screen
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    st.markdown(f"### {datetime.now().strftime('%H:%M')}")
+    st.caption(datetime.now().strftime('%A, %d. %B %Y'))
+    
+    st.markdown("#### Apps")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    apps = [
+        ("📞", "Telefon", "call"),
+        ("💬", "Nachrichten", "msg"),
+        ("🌐", "Chrome", "chrome"),
+        ("📧", "Gmail", "gmail"),
+        ("📷", "Kamera", "camera"),
+        ("🗺️", "Maps", "maps"),
+        ("▶️", "YouTube", "youtube"),
+        ("⚙️", "Einstellungen", "settings")
+    ]
+    
+    cols = [col1, col2, col3, col4] * 2
+    
+    for i, (emoji, name, key) in enumerate(apps):
+        with cols[i]:
+            if st.button(f"{emoji}\n{name}", key=f"android_{key}", use_container_width=True):
+                st.toast(f"{emoji} {name} gestartet!")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# === iOS Simulation ===
-elif selected_os_name == "iOS":
+# ==================== iOS ====================
+elif selected_os == "iOS":
+    st.markdown("##  iOS 17 Simulation")
+    
     if show_hints:
-        st.info(" **iOS** - Erleben Sie das Apple-Ökosystem!")
+        st.info(" Erleben Sie das intuitive iOS-Interface!")
     
-    ios_html = f'''
-    <div class="phone-container">
-        <div class="phone-screen ios-screen">
-            <div class="phone-statusbar">
-                <span>{get_current_time()}</span>
-                <div style="display: flex; gap: 8px;">
-                    <span>📶</span>
-                    <span>🔋</span>
-                </div>
-            </div>
-            
-            <div class="phone-content">
-                <div class="app-grid">
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">📱</div>
-                        <div class="app-label">Telefon</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">🌐</div>
-                        <div class="app-label">Safari</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">✉️</div>
-                        <div class="app-label">Mail</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">🎵</div>
-                        <div class="app-label">Musik</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">📅</div>
-                        <div class="app-label">Kalender</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">📸</div>
-                        <div class="app-label">Fotos</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">📷</div>
-                        <div class="app-label">Kamera</div>
-                    </div>
-                    <div class="app-icon">
-                        <div class="app-icon-circle" style="border-radius: 22%;">⚙️</div>
-                        <div class="app-label">Settings</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    '''
-    
-    st.markdown(ios_html, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns(3)
+    # Status Bar
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("🔐 Face ID", key="ios_face", use_container_width=True):
+        st.markdown(f"**{datetime.now().strftime('%H:%M')}**")
+    with col2:
+        st.markdown("**📶 🔋 87%**")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Home Screen
+    st.markdown('<div class="os-card">', unsafe_allow_html=True)
+    st.markdown("#### Apps")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    ios_apps = [
+        ("📱", "Telefon", "phone"),
+        ("🌐", "Safari", "safari"),
+        ("✉️", "Mail", "mail"),
+        ("🎵", "Musik", "music"),
+        ("📅", "Kalender", "cal"),
+        ("📸", "Fotos", "photos"),
+        ("📷", "Kamera", "camera"),
+        ("⚙️", "Einstellungen", "set")
+    ]
+    
+    cols = [col1, col2, col3, col4] * 2
+    
+    for i, (emoji, name, key) in enumerate(ios_apps):
+        with cols[i]:
+            if st.button(f"{emoji}\n{name}", key=f"ios_{key}", use_container_width=True):
+                st.toast(f"{emoji} {name} gestartet!")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Features
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🔐 Face ID entsperren", use_container_width=True):
             st.success("✓ iPhone entsperrt")
+    
     with col2:
-        if st.button("🎙️ Siri", key="ios_siri", use_container_width=True):
+        if st.button("🎙️ Siri aktivieren", use_container_width=True):
             st.info("🎙️ Wie kann ich helfen?")
+    
     with col3:
-        if st.button("📱 AirDrop", key="ios_air", use_container_width=True):
+        if st.button("📱 AirDrop", use_container_width=True):
             st.success("✓ Datei gesendet")
 
 # === Footer ===
 st.markdown("---")
 st.markdown("""
-<div style='text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea22, #764ba244); border-radius: 10px;'>
+<div style='text-align: center; padding: 20px; background: rgba(255,255,255,0.9); border-radius: 10px;'>
     <p style='margin: 0; color: #666;'>
         <strong>Betriebssystem-Simulator Pro</strong> • Erstellt mit Streamlit • © 2024
     </p>
